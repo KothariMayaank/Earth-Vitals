@@ -1,0 +1,3 @@
+metric_key,year,value,source_name,source_url,source_notes
+global_oil_reserves_billion_barrels,2025,1572,OPEC Annual Statistical Bulletin,https://publications.opec.org/asb,Official annual global oil industry statistics; 2025 value published in ASB 2026.
+global_lithium_reserves_tonnes,2025,37000000,U.S. Geological Survey,https://doi.org/10.5066/P1WKQ63T,USGS Mineral Commodity Summaries 2026 data release; reserves are metric tonnes of lithium content.

@@ -1,0 +1,1 @@
+"""Earth Vitals backend package."""
