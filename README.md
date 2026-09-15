@@ -115,11 +115,17 @@ The energy workflow downloads Ember's latest published CSV at run time. The mine
 
 The API exposes `/health`, `/metrics`, metric history/latest routes, domain summaries, `/index/current`, `PUT /index/weights`, and `POST /projections/{metric_key}`. Request/response examples are in [`backend/app/README.md`](backend/app/README.md).
 
+## Live deployment
+
+- Dashboard: [https://earth-vitals-xi.vercel.app](https://earth-vitals-xi.vercel.app)
+- API health: [https://earth-vitals-api.onrender.com/health](https://earth-vitals-api.onrender.com/health)
+- Source: [github.com/KothariMayaank/Earth-Vitals](https://github.com/KothariMayaank/Earth-Vitals)
+
 ## Deployment
 
 ### API on Render
 
-Create a Blueprint from this repository's `render.yaml`. Supply `SUPABASE_DB_URL` and `FRONTEND_ORIGIN` when prompted. After deployment, verify `https://<service>.onrender.com/health` returns `{"status":"ok"}`.
+Create a Blueprint from this repository's `render.yaml`. Supply `SUPABASE_DB_URL` and `FRONTEND_ORIGIN` when prompted. After deployment, verify the `/health` route returns `{"status":"ok"}`.
 
 ### Frontend on Vercel
 
