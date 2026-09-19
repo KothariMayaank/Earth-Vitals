@@ -16,7 +16,7 @@ from backend.app.index_service import (
     compute_current_index,
     update_index_weights,
 )
-from backend.app.models import DataPoint, Metric
+from backend.app.models import DataPoint, Metric, Source
 from backend.app.projection_service import ProjectionInputError, create_projection
 from backend.app.schemas import (
     DataPointResponse,
@@ -142,13 +142,14 @@ def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSum
         .subquery()
     )
     rows = session.execute(
-        select(Metric, DataPoint)
+        select(Metric, DataPoint, Source)
         .join(latest_dates, latest_dates.c.metric_id == Metric.id)
         .join(
             DataPoint,
             (DataPoint.metric_id == latest_dates.c.metric_id)
             & (DataPoint.timestamp == latest_dates.c.latest_timestamp),
         )
+        .join(Source, Source.id == DataPoint.source_id)
         .where(Metric.domain == domain)
         .order_by(Metric.key)
     ).all()
@@ -162,8 +163,11 @@ def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSum
             cadence=metric.cadence,
             timestamp=data_point.timestamp,
             value=data_point.value,
+            description=metric.description,
+            source_name=source.name,
+            source_url=source.url,
         )
-        for metric, data_point in rows
+        for metric, data_point, source in rows
     ]
 
 

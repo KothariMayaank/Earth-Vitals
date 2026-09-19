@@ -21,7 +21,8 @@ CURRENT_VALUES = {
     "global_electricity_generation_twh": 30_000.0,
     "global_oil_reserves_billion_barrels": 1_300.0,
     "global_lithium_reserves_tonnes": 35_000_000.0,
-    "global_pm25_aqi": 20.0,
+    "reporting_station_pm25_mean_ug_m3": 20.0,
+    "global_atmospheric_co2_ppm": 400.0,
 }
 
 

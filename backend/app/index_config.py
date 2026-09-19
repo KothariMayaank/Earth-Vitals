@@ -72,15 +72,25 @@ NORMALIZATION_RULES: dict[str, NormalizationRule] = {
             "quality, geographic concentration, or recycling."
         ),
     ),
-    "global_pm25_aqi": NormalizationRule(
+    "reporting_station_pm25_mean_ug_m3": NormalizationRule(
         domain="emissions",
         concerning=35.0,
         healthy=5.0,
         rationale=(
-            "Despite the legacy metric key ending in 'aqi', the stored unit is µg/m³, so "
-            "this rule treats the value as PM2.5 concentration. Lower is healthier: "
+            "Lower PM2.5 concentration is healthier: "
             "5 µg/m³ reflects the WHO annual guideline and 35 µg/m³ represents clearly "
-            "unhealthy chronic exposure. This global aggregation can hide local extremes."
+            "unhealthy chronic exposure. This availability-based reporting-station mean "
+            "is not population weighted and can hide both coverage gaps and local extremes."
+        ),
+    ),
+    "global_atmospheric_co2_ppm": NormalizationRule(
+        domain="emissions",
+        concerning=450.0,
+        healthy=350.0,
+        rationale=(
+            "Lower atmospheric CO2 is scored better. The 350–450 ppm range is an "
+            "explicit communication scale rather than a claim of a sharp physical safety "
+            "boundary; the index is exploratory and should be read alongside the raw trend."
         ),
     ),
 }

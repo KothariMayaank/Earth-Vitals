@@ -26,8 +26,8 @@ database.
 [
   {
     "id": 1,
-    "key": "global_pm25_aqi",
-    "display_name": "Global PM2.5 Concentration",
+    "key": "reporting_station_pm25_mean_ug_m3",
+    "display_name": "Reporting-Station PM2.5 Mean",
     "domain": "emissions",
     "unit": "µg/m³",
     "cadence": "daily"
@@ -88,7 +88,10 @@ GET /domains/minerals/summary
     "unit": "tonnes",
     "cadence": "annual",
     "timestamp": "2025-01-01",
-    "value": 37000000.0
+    "value": 37000000.0,
+    "description": "Year-end global lithium reserves measured as lithium content.",
+    "source_name": "U.S. Geological Survey",
+    "source_url": "https://doi.org/10.5066/P1WKQ63T"
   }
 ]
 ```
@@ -102,8 +105,8 @@ for each domain, and the weights used in the composite.
 
 ```json
 {
-  "composite_score": 25.87,
-  "domain_scores": {"energy": 37.89, "minerals": 39.73, "emissions": 0.0},
+  "composite_score": 29.6,
+  "domain_scores": {"energy": 37.89, "minerals": 39.73, "emissions": 11.19},
   "weights": {"energy": 0.333, "minerals": 0.333, "emissions": 0.333}
 }
 ```

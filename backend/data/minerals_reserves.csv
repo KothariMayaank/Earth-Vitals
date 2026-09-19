@@ -1,3 +1,11 @@
 metric_key,year,value,source_name,source_url,source_notes
 global_oil_reserves_billion_barrels,2025,1572,OPEC Annual Statistical Bulletin,https://publications.opec.org/asb,Official annual global oil industry statistics; 2025 value published in ASB 2026.
+global_oil_production_billion_barrels,2025,27.32025,OPEC Annual Statistical Bulletin,https://publications.opec.org/asb,Annualized from OPEC ASB 2026 world crude production of 74.85 million barrels per day in 2025.
 global_lithium_reserves_tonnes,2025,37000000,U.S. Geological Survey,https://doi.org/10.5066/P1WKQ63T,USGS Mineral Commodity Summaries 2026 data release; reserves are metric tonnes of lithium content.
+global_lithium_production_tonnes,2025,290000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-lithium.pdf,USGS Mineral Commodity Summaries 2026; estimated world mine production excluding withheld U.S. production.
+global_copper_reserves_tonnes,2025,980000000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-copper.pdf,USGS Mineral Commodity Summaries 2026; reserves converted from thousand metric tonnes.
+global_copper_production_tonnes,2025,23000000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-copper.pdf,USGS Mineral Commodity Summaries 2026; estimated mine production converted from thousand metric tonnes.
+global_cobalt_reserves_tonnes,2025,12000000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-cobalt.pdf,USGS Mineral Commodity Summaries 2026; reserves are metric tonnes of contained cobalt.
+global_cobalt_production_tonnes,2025,310000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-cobalt.pdf,USGS Mineral Commodity Summaries 2026; estimated mine production.
+global_nickel_reserves_tonnes,2025,140000000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-nickel.pdf,USGS Mineral Commodity Summaries 2026 reports world reserves as greater than 140 million tonnes; this stores the stated lower bound.
+global_nickel_production_tonnes,2025,3900000,U.S. Geological Survey,https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-nickel.pdf,USGS Mineral Commodity Summaries 2026; estimated mine production.

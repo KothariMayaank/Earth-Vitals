@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -87,10 +87,38 @@ type ChartPanelProps = {
 const finiteResourceMetrics = new Set([
   "global_oil_reserves_billion_barrels",
   "global_lithium_reserves_tonnes",
+  "global_copper_reserves_tonnes",
+  "global_cobalt_reserves_tonnes",
+  "global_nickel_reserves_tonnes",
 ]);
+
+const projectableMetrics = new Set([
+  ...Array.from(finiteResourceMetrics),
+  "global_renewable_share_pct",
+  "global_electricity_generation_twh",
+  "global_clean_electricity_share_pct",
+  "global_fossil_electricity_share_pct",
+  "global_wind_solar_share_pct",
+  "reporting_station_pm25_mean_ug_m3",
+  "global_atmospheric_co2_ppm",
+  "global_atmospheric_co2_growth_ppm_per_year",
+]);
+
+function metricCategory(metric: DomainMetric) {
+  if (metric.domain === "energy") {
+    return metric.key.includes("share") ? "Electricity mix" : "Generation";
+  }
+  if (metric.domain === "minerals") {
+    if (metric.key.includes("reserve_life")) return "Supply outlook";
+    if (metric.key.includes("production")) return "Production";
+    return "Reserves";
+  }
+  return metric.key.includes("atmospheric_co2") ? "Climate gases" : "Air quality";
+}
 
 function ChartPanel({ metric, points, loading, error, color }: ChartPanelProps) {
   const finiteResource = finiteResourceMetrics.has(metric.key);
+  const projectable = projectableMetrics.has(metric.key);
   const baselineYear = Number(metric.timestamp.slice(0, 4));
   const [rate, setRate] = useState(0);
   const [targetYear, setTargetYear] = useState(Math.max(2050, baselineYear + 25));
@@ -99,7 +127,7 @@ function ChartPanel({ metric, points, loading, error, color }: ChartPanelProps) 
   const [projectionError, setProjectionError] = useState<string>();
 
   useEffect(() => {
-    if (loading || error || !points?.length) return;
+    if (!projectable || loading || error || !points?.length) return;
     const timeout = window.setTimeout(async () => {
       setProjectionLoading(true);
       setProjectionError(undefined);
@@ -117,7 +145,7 @@ function ChartPanel({ metric, points, loading, error, color }: ChartPanelProps) 
       }
     }, 500);
     return () => window.clearTimeout(timeout);
-  }, [error, finiteResource, loading, metric.key, points, rate, targetYear]);
+  }, [error, finiteResource, loading, metric.key, points, projectable, rate, targetYear]);
 
   if (loading) {
     return <div className="grid h-72 place-items-center text-sm text-slate-400">Loading historical data…</div>;
@@ -196,6 +224,22 @@ function ChartPanel({ metric, points, loading, error, color }: ChartPanelProps) 
         </ResponsiveContainer>
       </div>
 
+      <div className="mx-2 mt-5 rounded-xl border border-white/10 bg-slate-950/40 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">About this metric</p>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          {metric.description ?? "No additional methodology description is available."}
+        </p>
+        <a
+          href={metric.source_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex text-xs font-medium text-sky-300 hover:text-sky-200"
+        >
+          Source: {metric.source_name} ↗
+        </a>
+      </div>
+
+      {projectable ? (
       <section className="mx-2 mt-5 rounded-xl border border-white/10 bg-slate-950/55 p-5" aria-label={`Project ${metric.display_name} forward`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -254,6 +298,11 @@ function ChartPanel({ metric, points, loading, error, color }: ChartPanelProps) 
           </div>
         )}
       </section>
+      ) : (
+        <p className="mx-2 mt-4 text-xs leading-5 text-slate-500">
+          This metric is shown as observational context and is not assigned a projection model.
+        </p>
+      )}
     </div>
   );
 }
@@ -267,11 +316,13 @@ export function DomainDashboard({ domain }: { domain: Domain }) {
   const [histories, setHistories] = useState<Record<string, HistoryPoint[]>>({});
   const [historyLoading, setHistoryLoading] = useState<string>();
   const [historyErrors, setHistoryErrors] = useState<Record<string, string>>({});
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
     let active = true;
     setSummaryLoading(true);
     setSummaryError(undefined);
+    setSelectedCategory("All");
     fetchDomainSummary(domain)
       .then((data) => active && setMetrics(data))
       .catch(() => active && setSummaryError("We couldn't reach the Earth Vitals API. Make sure FastAPI is running on port 8000, then refresh this page."))
@@ -280,6 +331,14 @@ export function DomainDashboard({ domain }: { domain: Domain }) {
       active = false;
     };
   }, [domain]);
+
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(metrics.map(metricCategory)))],
+    [metrics],
+  );
+  const visibleMetrics = selectedCategory === "All"
+    ? metrics
+    : metrics.filter((metric) => metricCategory(metric) === selectedCategory);
 
   async function toggleMetric(metric: DomainMetric) {
     if (expandedKey === metric.key) {
@@ -331,8 +390,27 @@ export function DomainDashboard({ domain }: { domain: Domain }) {
         <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-8 text-slate-400">No metrics have been ingested for this domain yet.</div>
       )}
 
+      {!summaryLoading && !summaryError && metrics.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2" aria-label="Metric categories">
+          {categories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setSelectedCategory(category)}
+              className={`rounded-full px-4 py-2 text-xs font-medium ring-1 ring-inset transition ${
+                selectedCategory === category
+                  ? style.badge
+                  : "bg-slate-900/60 text-slate-400 ring-white/10 hover:text-white"
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-5 md:grid-cols-2">
-        {metrics.map((metric) => {
+        {visibleMetrics.map((metric) => {
           const expanded = expandedKey === metric.key;
           return (
             <article
@@ -347,7 +425,9 @@ export function DomainDashboard({ domain }: { domain: Domain }) {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${style.eyebrow}`}>{metric.cadence}</p>
+                    <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${style.eyebrow}`}>
+                      {metricCategory(metric)} · {metric.cadence}
+                    </p>
                     <h3 className="mt-3 text-base font-medium text-slate-200">{metric.display_name}</h3>
                   </div>
                   <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ring-1 ring-inset transition ${style.badge} ${expanded ? "rotate-45" : ""}`}>+</span>

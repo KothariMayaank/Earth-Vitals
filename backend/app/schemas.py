@@ -32,6 +32,9 @@ class DataPointResponse(BaseModel):
 class DomainSummaryResponse(MetricResponse):
     timestamp: date
     value: float
+    description: str | None = None
+    source_name: str
+    source_url: str
 
 
 class IndexWeights(BaseModel):

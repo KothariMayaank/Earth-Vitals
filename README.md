@@ -6,7 +6,8 @@ The project is a portfolio-quality MVP, not an authoritative scientific assessme
 
 ## What it includes
 
-- Three independently runnable ingestion pipelines for OpenAQ, Ember, OPEC, and USGS data.
+- Four independently runnable ingestion pipelines for OpenAQ, Ember, NOAA, OPEC, and USGS data.
+- More than 25 indicators spanning electricity mix, generation, atmospheric CO2, air quality, mineral reserves, production, and static supply ratios.
 - A PostgreSQL/Supabase data store accessed through SQLAlchemy.
 - A typed FastAPI read/projection API.
 - A Next.js 14 dashboard with domain pages, Recharts histories and scenarios, a stylized world map, and adjustable index weights.
@@ -21,9 +22,11 @@ flowchart LR
     A --> D[(Supabase Postgres)]
     G[GitHub Actions] --> O[OpenAQ v3]
     G --> E[Ember CSV]
+    G --> N[NOAA atmospheric CO2]
     G --> M[Reviewed OPEC and USGS CSV]
     O --> G
     E --> G
+    N --> G
     M --> G
     G --> D
 ```
@@ -35,7 +38,7 @@ The monorepo keeps deployment boundaries explicit: Vercel builds `frontend/`, Re
 ```text
 frontend/                 Next.js App Router UI
 backend/app/              FastAPI, SQLAlchemy models, index and projection logic
-backend/pipeline/         OpenAQ, energy, and minerals ingestion commands
+backend/pipeline/         OpenAQ, energy, atmosphere, and minerals ingestion commands
 backend/scripts/          Database initialization and sample seeding
 backend/data/             Small reviewed input files (large Ember CSV is ignored)
 .github/workflows/        Scheduled ingestion jobs
@@ -67,6 +70,7 @@ Prerequisites: Python 3.12, Node.js 20+, npm, and a PostgreSQL database. A Supab
    python -m backend.pipeline.openaq_ingest
    python -m backend.pipeline.energy_ingest
    python -m backend.pipeline.minerals_ingest
+   python -m backend.pipeline.atmosphere_ingest
    ```
 
    Ember's large source CSV is not committed. Download its current yearly release and point `ENERGY_DATA_CSV_PATH` to it first. See [`backend/pipeline/README.md`](backend/pipeline/README.md) for source and refresh details.
@@ -102,7 +106,7 @@ The other API-key placeholders in `.env.example` reserve names for future integr
 
 ## Scheduled ingestion
 
-OpenAQ runs daily at 05:17 UTC because its readings change continuously. Ember energy and reviewed OPEC/USGS reserves run monthly, on different days and minutes: their authoritative releases are annual, so weekly execution would add traffic without materially improving freshness. All three workflows support manual dispatch.
+OpenAQ runs daily at 05:17 UTC because its readings change continuously. NOAA runs monthly, matching the source CO2 series. Ember energy and reviewed OPEC/USGS reserves run monthly, on different days and minutes: their authoritative releases are annual, so weekly execution would add traffic without materially improving freshness. All four workflows support manual dispatch.
 
 Configure these GitHub repository Actions secrets:
 
@@ -146,6 +150,7 @@ Current assumptions:
 | Proved oil reserves | 1,800 billion barrels | 800 billion barrels | Lower means less potential carbon lock-in, but depletion through extraction is not itself healthy. |
 | Lithium reserves | 20 million tonnes | 50 million tonnes | Higher reduces transition-supply scarcity, but ignores mining impacts, grade, concentration, and recycling. |
 | PM2.5 concentration | 35 µg/m³ | 5 µg/m³ | Lower is better; 5 reflects the [WHO annual guideline](https://www.who.int/teams/environment-climate-change-and-health/air-quality-and-health/health-impacts/types-of-pollutants). The OpenAQ aggregation is sensor-weighted, not population- or area-weighted. |
+| Global atmospheric CO2 | 450 ppm | 350 ppm | Lower is better. This communication range is an explicit index choice, not a sharp physical safety boundary. |
 
 These endpoints are transparent policy choices, not discovered scientific constants. The electricity-generation proxy should be replaced by carbon intensity or per-capita demand when those series are available. The editable weights are stored in the shared database, so in this MVP one user's change is visible to all users rather than being a private preference.
 
@@ -161,7 +166,7 @@ Projection code and assumptions live in `backend/app/projection_config.py`. Thes
 
 ### Data freshness and interpretation
 
-Provider cadence differs: OpenAQ is daily, while Ember/OPEC/USGS releases are generally annual. Missing sensors and uneven geographic coverage can bias the PM2.5 mean. Reserve classifications and revisions vary by publisher and year. Always follow the linked source metadata before quoting a value outside this demonstration.
+Provider cadence differs: OpenAQ is daily, NOAA CO2 is monthly, and Ember/OPEC/USGS releases are generally annual. Missing sensors and uneven geographic coverage can bias the PM2.5 mean. NOAA recent observations may be preliminary; Earth Vitals only derives annual CO2 growth from complete calendar years. Reserve classifications and revisions vary by publisher and year. Static reserve-life values assume constant production and no reserve additions, so they are context rather than exhaustion forecasts. Always follow the linked source metadata before quoting a value outside this demonstration.
 
 ## Verification
 

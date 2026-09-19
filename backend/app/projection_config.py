@@ -46,6 +46,21 @@ PROJECTION_RULES: dict[str, ProjectionRule] = {
         fallback_annual_extraction=290_000.0,
         fallback_source="USGS Mineral Commodity Summaries 2026",
     ),
+    "global_copper_reserves_tonnes": ProjectionRule(
+        kind="finite_resource",
+        fallback_annual_extraction=23_000_000.0,
+        fallback_source="USGS Mineral Commodity Summaries 2026",
+    ),
+    "global_cobalt_reserves_tonnes": ProjectionRule(
+        kind="finite_resource",
+        fallback_annual_extraction=310_000.0,
+        fallback_source="USGS Mineral Commodity Summaries 2026",
+    ),
+    "global_nickel_reserves_tonnes": ProjectionRule(
+        kind="finite_resource",
+        fallback_annual_extraction=3_900_000.0,
+        fallback_source="USGS Mineral Commodity Summaries 2026 (reserve value is a lower bound)",
+    ),
     "global_renewable_share_pct": ProjectionRule(
         kind="trend",
         minimum_value=0.0,
@@ -55,9 +70,25 @@ PROJECTION_RULES: dict[str, ProjectionRule] = {
         kind="trend",
         minimum_value=0.0,
     ),
-    "global_pm25_aqi": ProjectionRule(
+    "global_clean_electricity_share_pct": ProjectionRule(
+        kind="trend", minimum_value=0.0, maximum_value=100.0
+    ),
+    "global_fossil_electricity_share_pct": ProjectionRule(
+        kind="trend", minimum_value=0.0, maximum_value=100.0
+    ),
+    "global_wind_solar_share_pct": ProjectionRule(
+        kind="trend", minimum_value=0.0, maximum_value=100.0
+    ),
+    "reporting_station_pm25_mean_ug_m3": ProjectionRule(
         kind="trend",
         minimum_value=0.0,
+    ),
+    "global_atmospheric_co2_ppm": ProjectionRule(
+        kind="trend",
+        minimum_value=0.0,
+    ),
+    "global_atmospheric_co2_growth_ppm_per_year": ProjectionRule(
+        kind="trend",
     ),
     # Supported for the original Phase 1 sample metric if it is present.
     "sample_global_co2_ppm": ProjectionRule(

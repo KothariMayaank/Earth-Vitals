@@ -13,22 +13,21 @@ from backend.app.models import Base, DataPoint, Metric, Source
 from backend.pipeline import energy_ingest
 
 
-SAMPLE_CSV = """Area,Year,Category,Variable,Unit,Value
-World,2023,Electricity generation,Renewables,%,30.0
-World,2024,Electricity generation,Renewables,%,32.0
-World,2023,Electricity generation,Total Generation,TWh,29000.0
-World,2024,Electricity generation,Total Generation,TWh,30000.0
-France,2024,Electricity generation,Renewables,%,25.0
-"""
-
-
 class EnergyIngestTests(unittest.TestCase):
     def setUp(self) -> None:
         self.engine = create_engine("sqlite://")
         Base.metadata.create_all(self.engine)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.csv_path = Path(self.temp_dir.name) / "ember.csv"
-        self.csv_path.write_text(SAMPLE_CSV, encoding="utf-8")
+        lines = ["Area,Year,Category,Variable,Unit,Value"]
+        for index, definition in enumerate(energy_ingest.METRICS):
+            for year in (2023, 2024):
+                lines.append(
+                    f"World,{year},Electricity generation,{definition.variable},"
+                    f"{definition.unit},{100 + index + year - 2023}"
+                )
+        lines.append("France,2024,Electricity generation,Renewables,%,25.0")
+        self.csv_path.write_text("\n".join(lines), encoding="utf-8")
         self.original_csv_path = os.environ.get("ENERGY_DATA_CSV_PATH")
         os.environ["ENERGY_DATA_CSV_PATH"] = str(self.csv_path)
 
@@ -43,14 +42,11 @@ class EnergyIngestTests(unittest.TestCase):
     def test_load_energy_rows_selects_world_metrics(self) -> None:
         rows = energy_ingest.load_energy_rows(self.csv_path)
 
-        self.assertEqual(len(rows), 4)
+        self.assertEqual(len(rows), len(energy_ingest.METRICS) * 2)
         self.assertEqual({row.timestamp.year for row in rows}, {2023, 2024})
         self.assertEqual(
             {row.metric_key for row in rows},
-            {
-                "global_renewable_share_pct",
-                "global_electricity_generation_twh",
-            },
+            {definition.key for definition in energy_ingest.METRICS},
         )
 
     def test_main_inserts_then_updates_annual_rows(self) -> None:
@@ -62,13 +58,16 @@ class EnergyIngestTests(unittest.TestCase):
             self.assertEqual(energy_ingest.main(), 0)
             self.assertEqual(energy_ingest.main(), 0)
 
-        self.assertIn("4 row(s) inserted, 0 row(s) updated", output.getvalue())
-        self.assertIn("0 row(s) inserted, 4 row(s) updated", output.getvalue())
+        row_count = len(energy_ingest.METRICS) * 2
+        self.assertIn(f"{row_count} row(s) inserted, 0 row(s) updated", output.getvalue())
+        self.assertIn(f"0 row(s) inserted, {row_count} row(s) updated", output.getvalue())
 
         with Session(self.engine) as session:
             self.assertEqual(session.scalar(select(func.count(Source.id))), 1)
-            self.assertEqual(session.scalar(select(func.count(Metric.id))), 2)
-            self.assertEqual(session.scalar(select(func.count(DataPoint.id))), 4)
+            self.assertEqual(
+                session.scalar(select(func.count(Metric.id))), len(energy_ingest.METRICS)
+            )
+            self.assertEqual(session.scalar(select(func.count(DataPoint.id))), row_count)
 
 
 if __name__ == "__main__":

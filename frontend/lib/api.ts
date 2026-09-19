@@ -9,6 +9,9 @@ export type DomainMetric = {
   cadence: string;
   timestamp: string;
   value: number;
+  description: string | null;
+  source_name: string;
+  source_url: string;
 };
 
 export type HistoryPoint = {

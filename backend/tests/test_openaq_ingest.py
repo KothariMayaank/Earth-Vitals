@@ -69,6 +69,8 @@ class OpenAQIngestTests(unittest.TestCase):
             stored = session.scalar(select(DataPoint))
             self.assertIsNotNone(stored)
             self.assertEqual(stored.value, 15.0)
+            metric = session.scalar(select(Metric))
+            self.assertEqual(metric.key, "reporting_station_pm25_mean_ug_m3")
 
 
 if __name__ == "__main__":

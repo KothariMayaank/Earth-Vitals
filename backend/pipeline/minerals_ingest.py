@@ -37,6 +37,7 @@ class MetricDefinition:
     display_name: str
     unit: str
     description: str
+    derived: bool = False
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,7 @@ class NormalizedMineralRow:
     source_notes: str
 
 
-METRICS = {
+RAW_METRICS = {
     "global_oil_reserves_billion_barrels": MetricDefinition(
         key="global_oil_reserves_billion_barrels",
         display_name="Global Proven Crude Oil Reserves",
@@ -62,7 +63,82 @@ METRICS = {
         unit="tonnes",
         description="Year-end global lithium reserves measured as lithium content.",
     ),
+    "global_oil_production_billion_barrels": MetricDefinition(
+        key="global_oil_production_billion_barrels",
+        display_name="Global Crude Oil Production",
+        unit="billion barrels/year",
+        description="Annualized global crude oil production.",
+    ),
+    "global_lithium_production_tonnes": MetricDefinition(
+        key="global_lithium_production_tonnes",
+        display_name="Global Lithium Mine Production",
+        unit="tonnes/year",
+        description="Annual world mine production measured as lithium content; the USGS total excludes withheld U.S. production.",
+    ),
+    "global_copper_reserves_tonnes": MetricDefinition(
+        key="global_copper_reserves_tonnes",
+        display_name="Global Copper Reserves",
+        unit="tonnes",
+        description="Estimated global copper reserves measured as contained copper.",
+    ),
+    "global_copper_production_tonnes": MetricDefinition(
+        key="global_copper_production_tonnes",
+        display_name="Global Copper Mine Production",
+        unit="tonnes/year",
+        description="Annual global copper mine production measured as contained copper.",
+    ),
+    "global_cobalt_reserves_tonnes": MetricDefinition(
+        key="global_cobalt_reserves_tonnes",
+        display_name="Global Cobalt Reserves",
+        unit="tonnes",
+        description="Estimated global cobalt reserves measured as contained cobalt.",
+    ),
+    "global_cobalt_production_tonnes": MetricDefinition(
+        key="global_cobalt_production_tonnes",
+        display_name="Global Cobalt Mine Production",
+        unit="tonnes/year",
+        description="Annual global cobalt mine production measured as contained cobalt.",
+    ),
+    "global_nickel_reserves_tonnes": MetricDefinition(
+        key="global_nickel_reserves_tonnes",
+        display_name="Global Nickel Reserves (Lower Bound)",
+        unit="tonnes",
+        description="Conservative lower bound for global nickel reserves; USGS reports the total as greater than this value.",
+    ),
+    "global_nickel_production_tonnes": MetricDefinition(
+        key="global_nickel_production_tonnes",
+        display_name="Global Nickel Mine Production",
+        unit="tonnes/year",
+        description="Annual global nickel mine production measured as contained nickel.",
+    ),
 }
+
+RESERVE_LIFE_PAIRS = {
+    "oil": (
+        "global_oil_reserves_billion_barrels",
+        "global_oil_production_billion_barrels",
+    ),
+    "lithium": ("global_lithium_reserves_tonnes", "global_lithium_production_tonnes"),
+    "copper": ("global_copper_reserves_tonnes", "global_copper_production_tonnes"),
+    "cobalt": ("global_cobalt_reserves_tonnes", "global_cobalt_production_tonnes"),
+    "nickel": ("global_nickel_reserves_tonnes", "global_nickel_production_tonnes"),
+}
+
+DERIVED_METRICS = {
+    f"global_{commodity}_reserve_life_years": MetricDefinition(
+        key=f"global_{commodity}_reserve_life_years",
+        display_name=f"Global {commodity.title()} Static Reserve Life",
+        unit="years",
+        description=(
+            "Static reserves-to-production ratio using the latest reported reserve and "
+            "annual mine-production values. It is a snapshot, not a depletion forecast."
+        ),
+        derived=True,
+    )
+    for commodity in RESERVE_LIFE_PAIRS
+}
+
+METRICS = {**RAW_METRICS, **DERIVED_METRICS}
 
 
 class MineralsIngestionError(RuntimeError):
@@ -87,12 +163,12 @@ def load_mineral_rows(csv_path: Path) -> list[NormalizedMineralRow]:
         missing = ", ".join(sorted(missing_columns))
         raise MineralsIngestionError(f"Minerals CSV is missing required columns: {missing}")
 
-    unexpected_metrics = set(frame["metric_key"].dropna()).difference(METRICS)
+    unexpected_metrics = set(frame["metric_key"].dropna()).difference(RAW_METRICS)
     if unexpected_metrics:
         keys = ", ".join(sorted(unexpected_metrics))
         raise MineralsIngestionError(f"Minerals CSV contains unsupported metrics: {keys}")
 
-    missing_metrics = set(METRICS).difference(frame["metric_key"].dropna())
+    missing_metrics = set(RAW_METRICS).difference(frame["metric_key"].dropna())
     if missing_metrics:
         keys = ", ".join(sorted(missing_metrics))
         raise MineralsIngestionError(f"Minerals CSV is missing metrics: {keys}")
@@ -124,6 +200,37 @@ def load_mineral_rows(csv_path: Path) -> list[NormalizedMineralRow]:
                 source_notes=record.source_notes,
             )
         )
+
+    # Reserve life is intentionally derived rather than copied from a source.
+    # It assumes production remains constant and reserves receive no additions,
+    # so it must not be interpreted as a forecasted exhaustion date.
+    by_key_year = {(row.metric_key, row.timestamp.year): row for row in rows}
+    for commodity, (reserve_key, production_key) in RESERVE_LIFE_PAIRS.items():
+        years = {
+            year
+            for metric_key, year in by_key_year
+            if metric_key == reserve_key and (production_key, year) in by_key_year
+        }
+        for year in sorted(years):
+            reserve = by_key_year[(reserve_key, year)]
+            production = by_key_year[(production_key, year)]
+            if production.value <= 0:
+                raise MineralsIngestionError(
+                    f"Cannot derive reserve life for {commodity}: production must be positive."
+                )
+            rows.append(
+                NormalizedMineralRow(
+                    metric_key=f"global_{commodity}_reserve_life_years",
+                    timestamp=date(year, 1, 1),
+                    value=reserve.value / production.value,
+                    source_name=reserve.source_name,
+                    source_url=reserve.source_url,
+                    source_notes=(
+                        f"Derived by Earth Vitals from {commodity} reserves and annual "
+                        "production reported by the cited source."
+                    ),
+                )
+            )
     return rows
 
 

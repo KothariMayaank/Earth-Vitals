@@ -24,7 +24,8 @@ LOGGER = logging.getLogger(__name__)
 
 OPENAQ_LATEST_PM25_URL = "https://api.openaq.org/v3/parameters/2/latest"
 OPENAQ_SOURCE_URL = "https://openaq.org/"
-METRIC_KEY = "global_pm25_aqi"
+METRIC_KEY = "reporting_station_pm25_mean_ug_m3"
+LEGACY_METRIC_KEY = "global_pm25_aqi"
 PAGE_SIZE = 1000
 REQUEST_TIMEOUT_SECONDS = 30
 
@@ -153,18 +154,24 @@ def _get_or_create_source(session: Session) -> Source:
 def _get_or_create_metric(session: Session) -> Metric:
     metric = session.scalar(select(Metric).where(Metric.key == METRIC_KEY))
     if metric is None:
-        metric = Metric(
-            key=METRIC_KEY,
-            display_name="Global PM2.5 Concentration",
-            domain="emissions",
-            unit="µg/m³",
-            cadence="daily",
-            description=(
-                "Sensor-weighted mean of OpenAQ's latest valid PM2.5 measurements "
-                "reported during the preceding 24 hours."
-            ),
+        # Preserve existing history while correcting the legacy key, which called
+        # a physical concentration an AQI. OpenAQ reports µg/m³, not an AQI score.
+        metric = session.scalar(select(Metric).where(Metric.key == LEGACY_METRIC_KEY))
+        if metric is None:
+            metric = Metric(key=METRIC_KEY)
+            session.add(metric)
+        else:
+            metric.key = METRIC_KEY
+
+        metric.display_name = "Reporting-Station PM2.5 Mean"
+        metric.domain = "emissions"
+        metric.unit = "µg/m³"
+        metric.cadence = "daily"
+        metric.description = (
+            "Sensor-weighted mean of the latest valid PM2.5 measurements reported "
+            "to OpenAQ during the preceding 24 hours. This is an availability-based "
+            "monitoring-station mean, not a population-weighted global exposure estimate."
         )
-        session.add(metric)
         session.flush()
     return metric
 
