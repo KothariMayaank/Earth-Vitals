@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.database import REPO_ROOT, get_engine
+from backend.app.geographies import get_or_create_world_geography
 from backend.app.models import DataPoint, Metric, Source
 
 
@@ -279,6 +280,7 @@ def store_mineral_rows(rows: list[NormalizedMineralRow]) -> tuple[int, int]:
         try:
             sources = _get_or_create_sources(session, rows)
             metrics = _get_or_create_metrics(session)
+            world = get_or_create_world_geography(session)
             inserted = 0
             updated = 0
 
@@ -287,6 +289,7 @@ def store_mineral_rows(rows: list[NormalizedMineralRow]) -> tuple[int, int]:
                 data_point = session.scalar(
                     select(DataPoint).where(
                         DataPoint.metric_id == metric.id,
+                        DataPoint.geography_id == world.id,
                         DataPoint.timestamp == row.timestamp,
                     )
                 )
@@ -297,6 +300,7 @@ def store_mineral_rows(rows: list[NormalizedMineralRow]) -> tuple[int, int]:
                             timestamp=row.timestamp,
                             value=row.value,
                             source_id=sources[row.source_name].id,
+                            geography_id=world.id,
                         )
                     )
                     inserted += 1

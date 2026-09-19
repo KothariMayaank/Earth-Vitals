@@ -2,7 +2,7 @@ from collections.abc import Generator
 from datetime import date
 from functools import lru_cache
 import os
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,16 +16,20 @@ from backend.app.index_service import (
     compute_current_index,
     update_index_weights,
 )
-from backend.app.models import DataPoint, Metric, Source
+from backend.app.geographies import WORLD_CODE
+from backend.app.models import DataPoint, Geography, Metric, Source
 from backend.app.projection_service import ProjectionInputError, create_projection
 from backend.app.schemas import (
     DataPointResponse,
     Domain,
     DomainSummaryResponse,
     HealthResponse,
+    GeographyResponse,
     IndexResponse,
     IndexWeights,
     MetricResponse,
+    MetricMapPoint,
+    MetricMapResponse,
     ProjectionRequest,
     ProjectionResponse,
 )
@@ -76,6 +80,17 @@ def get_metric_or_404(session: Session, metric_key: str) -> Metric:
     return metric
 
 
+def get_geography_or_404(session: Session, geography_code: str) -> Geography:
+    geography = session.scalar(
+        select(Geography).where(Geography.code == geography_code.upper())
+    )
+    if geography is None:
+        raise HTTPException(
+            status_code=404, detail=f"Geography '{geography_code}' not found."
+        )
+    return geography
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
@@ -100,7 +115,11 @@ def metric_history(
         raise HTTPException(status_code=422, detail="start must be on or before end.")
 
     metric = get_metric_or_404(session, metric_key)
-    statement = select(DataPoint).where(DataPoint.metric_id == metric.id)
+    world = get_geography_or_404(session, WORLD_CODE)
+    statement = select(DataPoint).where(
+        DataPoint.metric_id == metric.id,
+        DataPoint.geography_id == world.id,
+    )
     if start is not None:
         statement = statement.where(DataPoint.timestamp >= start)
     if end is not None:
@@ -114,9 +133,13 @@ def metric_history(
 )
 def metric_latest(metric_key: str, session: SessionDependency) -> DataPoint:
     metric = get_metric_or_404(session, metric_key)
+    world = get_geography_or_404(session, WORLD_CODE)
     data_point = session.scalar(
         select(DataPoint)
-        .where(DataPoint.metric_id == metric.id)
+        .where(
+            DataPoint.metric_id == metric.id,
+            DataPoint.geography_id == world.id,
+        )
         .order_by(DataPoint.timestamp.desc(), DataPoint.id.desc())
         .limit(1)
     )
@@ -128,20 +151,19 @@ def metric_latest(metric_key: str, session: SessionDependency) -> DataPoint:
     return data_point
 
 
-@app.get(
-    "/domains/{domain}/summary",
-    response_model=list[DomainSummaryResponse],
-)
-def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSummaryResponse]:
+def _summary_for_geography(
+    session: Session, geography: Geography, domain: Domain | None = None
+) -> list[DomainSummaryResponse]:
     latest_dates = (
         select(
             DataPoint.metric_id.label("metric_id"),
             func.max(DataPoint.timestamp).label("latest_timestamp"),
         )
+        .where(DataPoint.geography_id == geography.id)
         .group_by(DataPoint.metric_id)
         .subquery()
     )
-    rows = session.execute(
+    statement = (
         select(Metric, DataPoint, Source)
         .join(latest_dates, latest_dates.c.metric_id == Metric.id)
         .join(
@@ -150,9 +172,12 @@ def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSum
             & (DataPoint.timestamp == latest_dates.c.latest_timestamp),
         )
         .join(Source, Source.id == DataPoint.source_id)
-        .where(Metric.domain == domain)
+        .where(DataPoint.geography_id == geography.id)
         .order_by(Metric.key)
-    ).all()
+    )
+    if domain is not None:
+        statement = statement.where(Metric.domain == domain)
+    rows = session.execute(statement).all()
     return [
         DomainSummaryResponse(
             id=metric.id,
@@ -169,6 +194,119 @@ def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSum
         )
         for metric, data_point, source in rows
     ]
+
+
+@app.get(
+    "/domains/{domain}/summary",
+    response_model=list[DomainSummaryResponse],
+)
+def domain_summary(domain: Domain, session: SessionDependency) -> list[DomainSummaryResponse]:
+    world = get_geography_or_404(session, WORLD_CODE)
+    return _summary_for_geography(session, world, domain)
+
+
+@app.get("/geographies", response_model=list[GeographyResponse])
+def list_geographies(
+    session: SessionDependency,
+    geography_type: Annotated[Literal["global", "region", "country"] | None, Query(alias="type")] = None,
+) -> list[Geography]:
+    statement = select(Geography).order_by(Geography.name)
+    if geography_type is not None:
+        statement = statement.where(Geography.type == geography_type)
+    return list(session.scalars(statement))
+
+
+@app.get("/countries/{country_code}", response_model=GeographyResponse)
+def country_detail(country_code: str, session: SessionDependency) -> Geography:
+    geography = get_geography_or_404(session, country_code)
+    if geography.type != "country":
+        raise HTTPException(status_code=404, detail=f"Country '{country_code}' not found.")
+    return geography
+
+
+@app.get(
+    "/countries/{country_code}/summary",
+    response_model=list[DomainSummaryResponse],
+)
+def country_summary(
+    country_code: str,
+    session: SessionDependency,
+    domain: Annotated[Domain | None, Query()] = None,
+) -> list[DomainSummaryResponse]:
+    geography = get_geography_or_404(session, country_code)
+    if geography.type != "country":
+        raise HTTPException(status_code=404, detail=f"Country '{country_code}' not found.")
+    return _summary_for_geography(session, geography, domain)
+
+
+@app.get(
+    "/countries/{country_code}/metrics/{metric_key}/history",
+    response_model=list[DataPointResponse],
+)
+def country_metric_history(
+    country_code: str,
+    metric_key: str,
+    session: SessionDependency,
+    start: date | None = None,
+    end: date | None = None,
+) -> list[DataPoint]:
+    if start is not None and end is not None and start > end:
+        raise HTTPException(status_code=422, detail="start must be on or before end.")
+    geography = get_geography_or_404(session, country_code)
+    if geography.type != "country":
+        raise HTTPException(status_code=404, detail=f"Country '{country_code}' not found.")
+    metric = get_metric_or_404(session, metric_key)
+    statement = select(DataPoint).where(
+        DataPoint.metric_id == metric.id,
+        DataPoint.geography_id == geography.id,
+    )
+    if start is not None:
+        statement = statement.where(DataPoint.timestamp >= start)
+    if end is not None:
+        statement = statement.where(DataPoint.timestamp <= end)
+    return list(session.scalars(statement.order_by(DataPoint.timestamp)))
+
+
+@app.get("/metrics/{metric_key}/map", response_model=MetricMapResponse)
+def metric_map(
+    metric_key: str,
+    session: SessionDependency,
+    observation_date: Annotated[date | None, Query(alias="date")] = None,
+) -> MetricMapResponse:
+    metric = get_metric_or_404(session, metric_key)
+    latest_statement = select(
+        DataPoint.geography_id.label("geography_id"),
+        func.max(DataPoint.timestamp).label("latest_timestamp"),
+    ).where(DataPoint.metric_id == metric.id)
+    if observation_date is not None:
+        latest_statement = latest_statement.where(DataPoint.timestamp <= observation_date)
+    latest_dates = latest_statement.group_by(DataPoint.geography_id).subquery()
+    rows = session.execute(
+        select(Geography, DataPoint)
+        .join(latest_dates, latest_dates.c.geography_id == Geography.id)
+        .join(
+            DataPoint,
+            (DataPoint.metric_id == metric.id)
+            & (DataPoint.geography_id == latest_dates.c.geography_id)
+            & (DataPoint.timestamp == latest_dates.c.latest_timestamp),
+        )
+        .where(Geography.type == "country")
+        .order_by(Geography.name)
+    ).all()
+    return MetricMapResponse(
+        metric_key=metric.key,
+        display_name=metric.display_name,
+        unit=metric.unit,
+        points=[
+            MetricMapPoint(
+                code=geography.code,
+                name=geography.name,
+                timestamp=data_point.timestamp,
+                value=data_point.value,
+            )
+            for geography, data_point in rows
+        ],
+    )
 
 
 @app.get("/index/current", response_model=IndexResponse)

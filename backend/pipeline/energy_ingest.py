@@ -1,4 +1,4 @@
-"""Ingest global annual electricity metrics from Ember's published CSV."""
+"""Ingest global and country annual electricity metrics from Ember's CSV."""
 
 from __future__ import annotations
 
@@ -15,13 +15,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.database import REPO_ROOT, get_engine
-from backend.app.models import DataPoint, Metric, Source
+from backend.app.geographies import get_or_create_geography, get_or_create_world_geography
+from backend.app.models import DataPoint, Geography, Metric, Source
 
 
 LOGGER = logging.getLogger(__name__)
 
 EMBER_SOURCE_URL = "https://ember-energy.org/data/yearly-electricity-data/"
-REQUIRED_COLUMNS = {"Area", "Year", "Category", "Variable", "Unit", "Value"}
+REQUIRED_COLUMNS = {
+    "Area",
+    "ISO 3 code",
+    "Year",
+    "Area type",
+    "Category",
+    "Variable",
+    "Unit",
+    "Value",
+}
 
 
 @dataclass(frozen=True)
@@ -36,6 +46,9 @@ class MetricDefinition:
 @dataclass(frozen=True)
 class NormalizedEnergyRow:
     metric_key: str
+    geography_code: str
+    geography_name: str
+    geography_type: str
     timestamp: date
     value: float
 
@@ -145,25 +158,33 @@ def load_energy_rows(csv_path: Path) -> list[NormalizedEnergyRow]:
 
     frame["Year"] = pd.to_numeric(frame["Year"], errors="coerce")
     frame["Value"] = pd.to_numeric(frame["Value"], errors="coerce")
-    global_generation = frame[
-        (frame["Area"] == "World")
-        & (frame["Category"] == "Electricity generation")
+    generation = frame[frame["Category"] == "Electricity generation"].copy()
+    generation["geography_code"] = generation["ISO 3 code"].fillna("")
+    generation.loc[generation["Area"] == "World", "geography_code"] = "WORLD"
+    generation = generation[
+        (generation["Area"] == "World")
+        | (
+            (generation["Area type"] == "Country or economy")
+            & generation["geography_code"].str.fullmatch(r"[A-Z]{3}")
+        )
     ]
 
     rows: list[NormalizedEnergyRow] = []
     for definition in METRICS:
-        selected = global_generation[
-            (global_generation["Variable"] == definition.variable)
-            & (global_generation["Unit"] == definition.unit)
+        selected = generation[
+            (generation["Variable"] == definition.variable)
+            & (generation["Unit"] == definition.unit)
         ].dropna(subset=["Year", "Value"])
 
-        duplicate_years = selected[selected.duplicated(subset=["Year"], keep=False)]
+        duplicate_years = selected[
+            selected.duplicated(subset=["geography_code", "Year"], keep=False)
+        ]
         if not duplicate_years.empty:
             raise EnergyIngestionError(
-                f"Ember CSV contains duplicate World/{definition.variable}/"
+                f"Ember CSV contains duplicate geography/{definition.variable}/"
                 f"{definition.unit} rows for the same year."
             )
-        if selected.empty:
+        if selected[selected["geography_code"] == "WORLD"].empty:
             raise EnergyIngestionError(
                 f"Ember CSV has no World/{definition.variable}/{definition.unit} rows."
             )
@@ -171,10 +192,13 @@ def load_energy_rows(csv_path: Path) -> list[NormalizedEnergyRow]:
         rows.extend(
             NormalizedEnergyRow(
                 metric_key=definition.key,
+                geography_code=record.geography_code,
+                geography_name=record.Area,
+                geography_type="global" if record.geography_code == "WORLD" else "country",
                 timestamp=date(int(record.Year), 1, 1),
                 value=float(record.Value),
             )
-            for record in selected.sort_values("Year").itertuples(index=False)
+            for record in selected.sort_values(["geography_code", "Year"]).itertuples(index=False)
         )
 
     return rows
@@ -218,26 +242,51 @@ def store_energy_rows(rows: list[NormalizedEnergyRow]) -> tuple[int, int]:
         try:
             source = _get_or_create_source(session)
             metrics = _get_or_create_metrics(session)
+            geographies: dict[str, Geography] = {}
+            for row in rows:
+                if row.geography_code in geographies:
+                    continue
+                if row.geography_code == "WORLD":
+                    geography = get_or_create_world_geography(session)
+                else:
+                    geography = get_or_create_geography(
+                        session,
+                        code=row.geography_code,
+                        name=row.geography_name,
+                        geography_type=row.geography_type,
+                    )
+                geographies[row.geography_code] = geography
+
+            metric_ids = [metric.id for metric in metrics.values()]
+            geography_ids = [geography.id for geography in geographies.values()]
+            existing_points = {
+                (point.metric_id, point.geography_id, point.timestamp): point
+                for point in session.scalars(
+                    select(DataPoint).where(
+                        DataPoint.metric_id.in_(metric_ids),
+                        DataPoint.geography_id.in_(geography_ids),
+                    )
+                )
+            }
             inserted = 0
             updated = 0
 
             for row in rows:
                 metric = metrics[row.metric_key]
-                data_point = session.scalar(
-                    select(DataPoint).where(
-                        DataPoint.metric_id == metric.id,
-                        DataPoint.timestamp == row.timestamp,
-                    )
+                geography = geographies[row.geography_code]
+                data_point = existing_points.get(
+                    (metric.id, geography.id, row.timestamp)
                 )
                 if data_point is None:
-                    session.add(
-                        DataPoint(
-                            metric_id=metric.id,
-                            timestamp=row.timestamp,
-                            value=row.value,
-                            source_id=source.id,
-                        )
+                    data_point = DataPoint(
+                        metric_id=metric.id,
+                        geography_id=geography.id,
+                        timestamp=row.timestamp,
+                        value=row.value,
+                        source_id=source.id,
                     )
+                    session.add(data_point)
+                    existing_points[(metric.id, geography.id, row.timestamp)] = data_point
                     inserted += 1
                 else:
                     data_point.value = row.value
@@ -271,9 +320,10 @@ def main() -> int:
 
     years = sorted({row.timestamp.year for row in rows})
     LOGGER.info(
-        "Loaded %d Ember rows for %d metrics covering %d–%d.",
+        "Loaded %d Ember rows for %d metrics and %d geographies covering %d–%d.",
         len(rows),
         len(METRICS),
+        len({row.geography_code for row in rows}),
         years[0],
         years[-1],
     )

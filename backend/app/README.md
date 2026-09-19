@@ -98,6 +98,48 @@ GET /domains/minerals/summary
 
 Unsupported domain names return HTTP 422.
 
+Global metric routes and domain summaries explicitly read the `WORLD`
+geography, so country observations cannot change the Planetary Health Index or
+global dashboard values.
+
+## Geographies and country electricity data
+
+`GET /geographies?type=country` lists available country/economy geographies.
+
+```json
+[{"id":42,"code":"IND","name":"India","type":"country"}]
+```
+
+`GET /countries/{country_code}` returns one geography. Country codes are
+case-insensitive ISO alpha-3 codes.
+
+`GET /countries/{country_code}/summary?domain=energy` returns the latest value
+and metadata for each populated metric in that country. The optional `domain`
+query accepts `energy`, `minerals`, or `emissions`.
+
+`GET /countries/{country_code}/metrics/{metric_key}/history` returns that
+country's full time series in ascending order, with the same optional `start`
+and `end` filters as the global history route.
+
+`GET /metrics/{metric_key}/map?date=YYYY-MM-DD` returns one observation per
+country for a choropleth. Without `date`, each country contributes its latest
+observation; with `date`, the route returns the latest observation on or before
+that date.
+
+```json
+{
+  "metric_key":"global_renewable_share_pct",
+  "display_name":"Global Renewable Electricity Share",
+  "unit":"%",
+  "points":[
+    {"code":"IND","name":"India","timestamp":"2025-01-01","value":24.08}
+  ]
+}
+```
+
+The current country coverage comes from Ember's annual electricity dataset.
+The minerals and emissions datasets remain global-only.
+
 ## Planetary Health Index
 
 `GET /index/current` returns the current 0-100 composite, the normalized score

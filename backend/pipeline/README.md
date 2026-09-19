@@ -43,10 +43,12 @@ Run the pipeline from the repository root:
 python -m backend.pipeline.energy_ingest
 ```
 
-The script reads 11 `World` annual series covering total and renewable generation,
+The script reads 11 annual series covering total and renewable generation,
 clean/fossil/renewable shares, coal, gas, solar, wind, nuclear, and combined wind
-and solar. It stores January 1 as the representative date for each reporting year
-and inserts or updates matching data points. Missing files,
+and solar for `World` plus every country or economy with a three-letter ISO code.
+It creates geography records, stores January 1 as the representative date for
+each reporting year, and inserts or updates matching metric/geography/date data
+points. Missing files,
 unexpected CSV columns, duplicate annual records, and database errors are logged
 clearly and return a non-zero exit status without a traceback.
 

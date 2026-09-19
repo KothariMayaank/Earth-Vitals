@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.models import DataPoint, Metric, Projection
+from backend.app.geographies import WORLD_CODE
+from backend.app.models import DataPoint, Geography, Metric, Projection
 from backend.app.projection_config import (
     DEFAULT_TREND_HORIZON_YEARS,
     DEPLETION_THRESHOLD_FRACTION,
@@ -208,7 +209,11 @@ def create_projection(
     points = list(
         session.scalars(
             select(DataPoint)
-            .where(DataPoint.metric_id == metric.id)
+            .join(Geography, Geography.id == DataPoint.geography_id)
+            .where(
+                DataPoint.metric_id == metric.id,
+                Geography.code == WORLD_CODE,
+            )
             .order_by(DataPoint.timestamp, DataPoint.id)
         )
     )

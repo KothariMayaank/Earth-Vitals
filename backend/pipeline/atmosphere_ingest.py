@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.database import REPO_ROOT, get_engine
+from backend.app.geographies import get_or_create_world_geography
 from backend.app.models import DataPoint, Metric, Source
 
 
@@ -160,6 +161,7 @@ def store_atmosphere_rows(rows: list[NormalizedAtmosphereRow]) -> tuple[int, int
         try:
             source = _get_or_create_source(session)
             metrics = _get_or_create_metrics(session)
+            world = get_or_create_world_geography(session)
             inserted = 0
             updated = 0
             for row in rows:
@@ -167,6 +169,7 @@ def store_atmosphere_rows(rows: list[NormalizedAtmosphereRow]) -> tuple[int, int
                 data_point = session.scalar(
                     select(DataPoint).where(
                         DataPoint.metric_id == metric.id,
+                        DataPoint.geography_id == world.id,
                         DataPoint.timestamp == row.timestamp,
                     )
                 )
@@ -177,6 +180,7 @@ def store_atmosphere_rows(rows: list[NormalizedAtmosphereRow]) -> tuple[int, int
                             timestamp=row.timestamp,
                             value=row.value,
                             source_id=source.id,
+                            geography_id=world.id,
                         )
                     )
                     inserted += 1

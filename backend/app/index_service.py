@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.index_config import Domain, NORMALIZATION_RULES, NormalizationRule
-from backend.app.models import DataPoint, IndexWeight, Metric
+from backend.app.geographies import WORLD_CODE
+from backend.app.models import DataPoint, Geography, IndexWeight, Metric
 from backend.app.schemas import IndexDomainScores, IndexResponse, IndexWeights
 
 
@@ -38,7 +39,8 @@ def _current_domain_scores(session: Session) -> dict[Domain, float]:
         row = session.execute(
             select(Metric, DataPoint)
             .join(DataPoint, DataPoint.metric_id == Metric.id)
-            .where(Metric.key == metric_key)
+            .join(Geography, Geography.id == DataPoint.geography_id)
+            .where(Metric.key == metric_key, Geography.code == WORLD_CODE)
             .order_by(DataPoint.timestamp.desc(), DataPoint.id.desc())
             .limit(1)
         ).first()

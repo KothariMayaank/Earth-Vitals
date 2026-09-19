@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
-from backend.app.models import Base, DataPoint, Metric, Projection, Source
+from backend.app.models import Base, DataPoint, Geography, Metric, Projection, Source
 from backend.app.projection_service import create_projection
 from backend.app.schemas import ProjectionRequest
 
@@ -15,6 +15,7 @@ class ProjectionServiceTests(unittest.TestCase):
         Base.metadata.create_all(self.engine)
         with Session(self.engine) as session:
             source = Source(name="Test", url="https://example.com")
+            world = Geography(code="WORLD", name="World", type="global")
             session.add_all(
                 [
                     Metric(
@@ -24,8 +25,8 @@ class ProjectionServiceTests(unittest.TestCase):
                         unit="billion barrels",
                         cadence="annual",
                         data_points=[
-                            DataPoint(timestamp=date(2024, 1, 1), value=100, source=source),
-                            DataPoint(timestamp=date(2025, 1, 1), value=90, source=source),
+                            DataPoint(timestamp=date(2024, 1, 1), value=100, source=source, geography=world),
+                            DataPoint(timestamp=date(2025, 1, 1), value=90, source=source, geography=world),
                         ],
                     ),
                     Metric(
@@ -35,7 +36,7 @@ class ProjectionServiceTests(unittest.TestCase):
                         unit="%",
                         cadence="annual",
                         data_points=[
-                            DataPoint(timestamp=date(2025, 1, 1), value=50, source=source)
+                            DataPoint(timestamp=date(2025, 1, 1), value=50, source=source, geography=world)
                         ],
                     ),
                 ]

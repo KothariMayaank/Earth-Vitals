@@ -10,7 +10,7 @@ The project is a portfolio-quality MVP, not an authoritative scientific assessme
 - More than 25 indicators spanning electricity mix, generation, atmospheric CO2, air quality, mineral reserves, production, and static supply ratios.
 - A PostgreSQL/Supabase data store accessed through SQLAlchemy.
 - A typed FastAPI read/projection API.
-- A Next.js 14 dashboard with domain pages, Recharts histories and scenarios, a stylized world map, and adjustable index weights.
+- A Next.js 14 dashboard with domain pages, Recharts histories and scenarios, a data-driven country electricity map, country profiles, and adjustable index weights.
 - Scheduled GitHub Actions with manually runnable fallbacks.
 
 ## Architecture
@@ -62,6 +62,13 @@ Prerequisites: Python 3.12, Node.js 20+, npm, and a PostgreSQL database. A Supab
    ```shell
    python backend/scripts/init_db.py
    python backend/scripts/seed_sample.py
+   ```
+
+   Existing installations created before country support should run the
+   idempotent geography migration once:
+
+   ```shell
+   python backend/scripts/migrate_geographies.py
    ```
 
 4. Run the real ingestion commands from the repository root:
@@ -117,7 +124,11 @@ The energy workflow downloads Ember's latest published CSV at run time. The mine
 
 ## API surface
 
-The API exposes `/health`, `/metrics`, metric history/latest routes, domain summaries, `/index/current`, `PUT /index/weights`, and `POST /projections/{metric_key}`. Request/response examples are in [`backend/app/README.md`](backend/app/README.md).
+The API exposes `/health`, `/metrics`, global metric history/latest routes,
+domain summaries, country summaries and histories, metric map snapshots,
+`/index/current`, `PUT /index/weights`, and
+`POST /projections/{metric_key}`. Request/response examples are in
+[`backend/app/README.md`](backend/app/README.md).
 
 ## Live deployment
 
@@ -154,7 +165,13 @@ Current assumptions:
 
 These endpoints are transparent policy choices, not discovered scientific constants. The electricity-generation proxy should be replaced by carbon intensity or per-capita demand when those series are available. The editable weights are stored in the shared database, so in this MVP one user's change is visible to all users rather than being a private preference.
 
-The map is intentionally illustrative. The current MVP stores global aggregates, not country-level observations, so it does not imply geographic precision.
+The map is data-driven for Ember electricity metrics. It uses the latest annual
+observation for each country or economy in Ember's dataset; gray means no
+observation, not a zero value. Clicking a covered country opens its electricity
+profile and full history. Minerals, atmospheric CO2, and the OpenAQ aggregate
+remain global series, so Earth Vitals does not imply country-level precision for
+those domains. Country/economy boundaries and labels follow the lightweight map
+dataset and should not be interpreted as a geopolitical position.
 
 ### Projection scenarios
 

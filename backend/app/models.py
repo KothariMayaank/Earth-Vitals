@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Text, func
+from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -17,6 +17,24 @@ class Source(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     data_points: Mapped[list["DataPoint"]] = relationship(back_populates="source")
+
+
+class Geography(Base):
+    __tablename__ = "geographies"
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('global', 'region', 'country')",
+            name="ck_geographies_type",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(Text, unique=True)
+    name: Mapped[str] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(Text)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("geographies.id"), nullable=True)
+
+    data_points: Mapped[list["DataPoint"]] = relationship(back_populates="geography")
 
 
 class Metric(Base):
@@ -46,19 +64,35 @@ class Metric(Base):
 
 class DataPoint(Base):
     __tablename__ = "data_points"
-    __table_args__ = (Index("ix_data_points_metric_id_timestamp", "metric_id", "timestamp"),)
+    __table_args__ = (
+        Index("ix_data_points_metric_id_timestamp", "metric_id", "timestamp"),
+        Index(
+            "ix_data_points_metric_geography_timestamp",
+            "metric_id",
+            "geography_id",
+            "timestamp",
+        ),
+        UniqueConstraint(
+            "metric_id",
+            "geography_id",
+            "timestamp",
+            name="uq_data_points_metric_geography_timestamp",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     metric_id: Mapped[int] = mapped_column(ForeignKey("metrics.id"))
     timestamp: Mapped[date] = mapped_column(Date)
     value: Mapped[float] = mapped_column(Float)
     source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"))
+    geography_id: Mapped[int] = mapped_column(ForeignKey("geographies.id"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     metric: Mapped[Metric] = relationship(back_populates="data_points")
     source: Mapped[Source] = relationship(back_populates="data_points")
+    geography: Mapped[Geography] = relationship(back_populates="data_points")
 
 
 class IndexWeight(Base):

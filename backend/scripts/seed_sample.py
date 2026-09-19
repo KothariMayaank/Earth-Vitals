@@ -10,6 +10,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
 from app.database import get_engine  # noqa: E402
+from app.geographies import get_or_create_world_geography  # noqa: E402
 from app.models import Base, DataPoint, Metric, Source  # noqa: E402
 
 
@@ -21,6 +22,7 @@ def main() -> None:
     Base.metadata.create_all(engine)
 
     with Session(engine) as session:
+        world = get_or_create_world_geography(session)
         existing_metric = session.scalar(
             select(Metric).where(Metric.key == SAMPLE_METRIC_KEY)
         )
@@ -46,6 +48,7 @@ def main() -> None:
                     timestamp=start_date + timedelta(days=offset),
                     value=420.0 + offset * 0.25,
                     source=source,
+                    geography=world,
                 )
                 for offset in range(5)
             ]

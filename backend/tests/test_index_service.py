@@ -12,7 +12,7 @@ from backend.app.index_service import (
     seed_default_index_weights,
     update_index_weights,
 )
-from backend.app.models import Base, DataPoint, Metric, Source
+from backend.app.models import Base, DataPoint, Geography, Metric, Source
 from backend.app.schemas import IndexWeights
 
 
@@ -32,6 +32,7 @@ class IndexServiceTests(unittest.TestCase):
         Base.metadata.create_all(self.engine)
         with Session(self.engine) as session:
             source = Source(name="Test", url="https://example.com")
+            world = Geography(code="WORLD", name="World", type="global")
             for key, value in CURRENT_VALUES.items():
                 rule = NORMALIZATION_RULES[key]
                 session.add(
@@ -46,6 +47,7 @@ class IndexServiceTests(unittest.TestCase):
                                 timestamp=date(2025, 1, 1),
                                 value=value,
                                 source=source,
+                                geography=world,
                             )
                         ],
                     )

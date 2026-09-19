@@ -52,6 +52,27 @@ export type MetricProjection = {
   computed_at: string;
 };
 
+export type MetricMapPoint = {
+  code: string;
+  name: string;
+  timestamp: string;
+  value: number;
+};
+
+export type MetricMap = {
+  metric_key: string;
+  display_name: string;
+  unit: string;
+  points: MetricMapPoint[];
+};
+
+export type Geography = {
+  id: number;
+  code: string;
+  name: string;
+  type: "global" | "region" | "country";
+};
+
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function getJson<T>(path: string): Promise<T> {
@@ -92,6 +113,27 @@ export function fetchDomainSummary(domain: Domain): Promise<DomainMetric[]> {
 
 export function fetchMetricHistory(metricKey: string): Promise<HistoryPoint[]> {
   return getJson<HistoryPoint[]>(`/metrics/${encodeURIComponent(metricKey)}/history`);
+}
+
+export function fetchMetricMap(metricKey: string): Promise<MetricMap> {
+  return getJson<MetricMap>(`/metrics/${encodeURIComponent(metricKey)}/map`);
+}
+
+export function fetchCountrySummary(countryCode: string): Promise<DomainMetric[]> {
+  return getJson<DomainMetric[]>(`/countries/${encodeURIComponent(countryCode)}/summary`);
+}
+
+export function fetchCountry(countryCode: string): Promise<Geography> {
+  return getJson<Geography>(`/countries/${encodeURIComponent(countryCode)}`);
+}
+
+export function fetchCountryMetricHistory(
+  countryCode: string,
+  metricKey: string,
+): Promise<HistoryPoint[]> {
+  return getJson<HistoryPoint[]>(
+    `/countries/${encodeURIComponent(countryCode)}/metrics/${encodeURIComponent(metricKey)}/history`,
+  );
 }
 
 export function fetchPlanetaryIndex(): Promise<PlanetaryIndex> {

@@ -37,6 +37,29 @@ class DomainSummaryResponse(MetricResponse):
     source_url: str
 
 
+class GeographyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    name: str
+    type: Literal["global", "region", "country"]
+
+
+class MetricMapPoint(BaseModel):
+    code: str
+    name: str
+    timestamp: date
+    value: float
+
+
+class MetricMapResponse(BaseModel):
+    metric_key: str
+    display_name: str
+    unit: str
+    points: list[MetricMapPoint]
+
+
 class IndexWeights(BaseModel):
     energy: float = Field(ge=0, le=1)
     minerals: float = Field(ge=0, le=1)
