@@ -123,7 +123,7 @@ export function WorldOverviewMap() {
             width={800}
             height={390}
             role="img"
-            aria-label="Country-level electricity metric map. Countries without observations are gray."
+            aria-label={`Country-level ${activeMetric.domain} metric map. Countries without observations are gray.`}
             className="relative mx-auto h-auto w-full max-w-5xl"
           >
             <Sphere id="earth-vitals-sphere" fill="#071426" stroke="#1e3a52" strokeWidth={0.8} />

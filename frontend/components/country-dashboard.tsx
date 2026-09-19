@@ -123,6 +123,7 @@ export function CountryDashboard({ code, initialDomain = "energy" }: { code: str
           <button
             key={domain}
             type="button"
+            aria-pressed={selectedDomain === domain}
             onClick={() => {
               setSelectedDomain(domain);
               setExpandedKey(undefined);
