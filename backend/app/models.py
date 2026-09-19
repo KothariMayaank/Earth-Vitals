@@ -41,7 +41,7 @@ class Metric(Base):
     __tablename__ = "metrics"
     __table_args__ = (
         CheckConstraint(
-            "domain IN ('energy', 'minerals', 'emissions')",
+            "domain IN ('energy', 'minerals', 'emissions', 'freshwater')",
             name="ck_metrics_domain",
         ),
         CheckConstraint(

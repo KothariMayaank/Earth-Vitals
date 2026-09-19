@@ -31,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
                 <Link className="transition hover:text-amber-300" href="/domains/energy">Energy</Link>
                 <Link className="transition hover:text-stone-200" href="/domains/minerals">Minerals</Link>
                 <Link className="transition hover:text-sky-300" href="/domains/emissions">Emissions</Link>
+                <Link className="transition hover:text-cyan-300" href="/domains/freshwater">Freshwater</Link>
               </nav>
             </div>
           </header>

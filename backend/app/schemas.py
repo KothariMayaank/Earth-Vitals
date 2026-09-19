@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-Domain = Literal["energy", "minerals", "emissions"]
+Domain = Literal["energy", "minerals", "emissions", "freshwater"]
 
 
 class HealthResponse(BaseModel):

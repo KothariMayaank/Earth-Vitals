@@ -18,19 +18,32 @@ import { fetchMetricMap, type MetricMapPoint } from "../lib/api";
 countries.registerLocale(english);
 
 const mapMetrics = [
-  { key: "global_renewable_share_pct", label: "Renewable electricity share" },
-  { key: "global_clean_electricity_share_pct", label: "Clean electricity share" },
-  { key: "global_wind_solar_share_pct", label: "Wind and solar share" },
-  { key: "global_fossil_electricity_share_pct", label: "Fossil electricity share" },
-];
+  { key: "global_renewable_share_pct", label: "Renewable electricity share", domain: "energy", scale: "positive-pct" },
+  { key: "global_clean_electricity_share_pct", label: "Clean electricity share", domain: "energy", scale: "positive-pct" },
+  { key: "global_wind_solar_share_pct", label: "Wind and solar share", domain: "energy", scale: "positive-pct" },
+  { key: "global_fossil_electricity_share_pct", label: "Fossil electricity share", domain: "energy", scale: "negative-pct" },
+  { key: "freshwater_resources_per_capita_m3", label: "Renewable freshwater per person", domain: "freshwater", scale: "resources" },
+  { key: "freshwater_withdrawals_pct_resources", label: "Withdrawals vs. internal resources", domain: "freshwater", scale: "pressure" },
+  { key: "water_stress_pct", label: "Water stress", domain: "freshwater", scale: "pressure" },
+  { key: "safe_drinking_water_access_pct", label: "Safely managed drinking-water access", domain: "freshwater", scale: "positive-pct" },
+] as const;
 
-function fillForValue(value: number | undefined, metricKey: string) {
+type MapMetric = (typeof mapMetrics)[number];
+
+function fillForValue(value: number | undefined, metric: MapMetric) {
   if (value === undefined) return "#273548";
-  if (metricKey === "global_fossil_electricity_share_pct") {
+  if (metric.scale === "negative-pct" || metric.scale === "pressure") {
     if (value < 25) return "#34d399";
     if (value < 50) return "#fbbf24";
     if (value < 75) return "#fb923c";
     return "#fb7185";
+  }
+  if (metric.scale === "resources") {
+    if (value < 500) return "#fb7185";
+    if (value < 1000) return "#fb923c";
+    if (value < 1700) return "#fbbf24";
+    if (value < 5000) return "#0891b2";
+    return "#6ee7b7";
   }
   if (value < 10) return "#1e3a5f";
   if (value < 25) return "#0369a1";
@@ -45,7 +58,7 @@ function alpha3FromNumeric(id: string | number) {
 
 export function WorldOverviewMap() {
   const router = useRouter();
-  const [metricKey, setMetricKey] = useState(mapMetrics[0].key);
+  const [metricKey, setMetricKey] = useState<string>(mapMetrics[0].key);
   const [points, setPoints] = useState<MetricMapPoint[]>([]);
   const [unit, setUnit] = useState("%");
   const [loading, setLoading] = useState(true);
@@ -73,6 +86,7 @@ export function WorldOverviewMap() {
     () => new Map(points.map((point) => [point.code, point])),
     [points],
   );
+  const activeMetric = mapMetrics.find((metric) => metric.key === metricKey) ?? mapMetrics[0];
   const hovered = hoveredCode ? byCode.get(hoveredCode) : undefined;
 
   return (
@@ -80,9 +94,11 @@ export function WorldOverviewMap() {
       <div className="flex flex-col gap-5 border-b border-white/10 px-7 py-7 sm:flex-row sm:items-end sm:justify-between sm:px-10">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">Geographic explorer</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Electricity transition by country</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            {activeMetric.domain === "freshwater" ? "Freshwater conditions by country" : "Electricity transition by country"}
+          </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Explore Ember&apos;s latest available country observations. Gray means no matching observation—not a zero value.
+            Explore the latest available {activeMetric.domain === "freshwater" ? "World Bank water" : "Ember electricity"} observations. Gray means no matching observation—not a zero value.
           </p>
         </div>
         <label className="text-xs font-medium text-slate-300">
@@ -117,7 +133,7 @@ export function WorldOverviewMap() {
                 geographies.map((geography) => {
                   const code = alpha3FromNumeric(geography.id);
                   const point = code ? byCode.get(code) : undefined;
-                  const fill = fillForValue(point?.value, metricKey);
+                  const fill = fillForValue(point?.value, activeMetric);
                   const label = point
                     ? `${point.name}: ${point.value.toFixed(1)} ${unit}`
                     : `${geography.properties.name}: no data`;
@@ -134,7 +150,7 @@ export function WorldOverviewMap() {
                       onMouseLeave={() => setHoveredCode(undefined)}
                       onFocus={() => setHoveredCode(code)}
                       onBlur={() => setHoveredCode(undefined)}
-                      onClick={() => point && router.push(`/countries/${point.code}`)}
+                      onClick={() => point && router.push(`/countries/${point.code}?domain=${activeMetric.domain}`)}
                       style={{
                         default: { outline: "none" },
                         hover: { fill: point ? "#f8fafc" : fill, outline: "none", cursor: point ? "pointer" : "default" },
@@ -164,8 +180,11 @@ export function WorldOverviewMap() {
           )}
           <div className="mt-8 space-y-2 text-xs text-slate-500">
             <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-[#273548]" /> No observation</div>
-            <div className="h-2 rounded-full bg-gradient-to-r from-[#1e3a5f] via-[#0891b2] to-[#6ee7b7]" />
-            <div className="flex justify-between"><span>Lower share</span><span>Higher share</span></div>
+            <div className={`h-2 rounded-full bg-gradient-to-r ${activeMetric.scale === "pressure" || activeMetric.scale === "negative-pct" ? "from-[#34d399] via-[#fbbf24] to-[#fb7185]" : "from-[#1e3a5f] via-[#0891b2] to-[#6ee7b7]"}`} />
+            <div className="flex justify-between">
+              <span>{activeMetric.scale === "resources" ? "Scarcer" : activeMetric.scale === "pressure" || activeMetric.scale === "negative-pct" ? "Lower pressure" : "Lower share"}</span>
+              <span>{activeMetric.scale === "resources" ? "More abundant" : activeMetric.scale === "pressure" || activeMetric.scale === "negative-pct" ? "Higher pressure" : "Higher share"}</span>
+            </div>
           </div>
         </aside>
       </div>

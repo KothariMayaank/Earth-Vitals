@@ -1,5 +1,24 @@
 # Data ingestion pipelines
 
+## World Bank freshwater ingestion
+
+`freshwater_ingest.py` calls the keyless World Bank Indicators API and stores
+five annual freshwater series for every available country plus official World
+aggregates: renewable freshwater per person, absolute withdrawals, withdrawals
+relative to internal resources, water stress, and safely managed drinking-water
+access. Regional and income-group aggregates are deliberately excluded.
+
+Run it from the repository root:
+
+```shell
+python -m backend.pipeline.freshwater_ingest
+```
+
+The pipeline upserts by metric, geography, and year. The source does not publish
+a World aggregate for water stress, so that metric is correctly limited to
+country maps and profiles rather than being replaced with an unweighted average.
+No API key or manually downloaded input file is required.
+
 ## OpenAQ PM2.5 ingestion
 
 `openaq_ingest.py` requests the latest PM2.5 reading for every sensor that has

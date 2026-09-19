@@ -72,7 +72,7 @@ An unknown metric, or a metric without data points, returns HTTP 404.
 ## Domain summary
 
 `GET /domains/{domain}/summary` returns the latest value and metric metadata for
-every populated metric in `energy`, `minerals`, or `emissions`.
+every populated metric in `energy`, `minerals`, `emissions`, or `freshwater`.
 
 ```text
 GET /domains/minerals/summary
@@ -115,7 +115,7 @@ case-insensitive ISO alpha-3 codes.
 
 `GET /countries/{country_code}/summary?domain=energy` returns the latest value
 and metadata for each populated metric in that country. The optional `domain`
-query accepts `energy`, `minerals`, or `emissions`.
+query accepts `energy`, `minerals`, `emissions`, or `freshwater`.
 
 `GET /countries/{country_code}/metrics/{metric_key}/history` returns that
 country's full time series in ascending order, with the same optional `start`
@@ -137,8 +137,8 @@ that date.
 }
 ```
 
-The current country coverage comes from Ember's annual electricity dataset.
-The minerals and emissions datasets remain global-only.
+Country coverage comes from Ember's annual electricity dataset and World Bank
+freshwater indicators. Minerals and emissions remain global-only.
 
 ## Planetary Health Index
 

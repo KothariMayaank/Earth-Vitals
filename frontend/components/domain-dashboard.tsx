@@ -49,6 +49,15 @@ const domainStyles = {
     border: "border-sky-400/25",
     badge: "bg-sky-400/10 text-sky-200 ring-sky-400/25",
   },
+  freshwater: {
+    label: "Freshwater",
+    description: "Tracking renewable water availability, withdrawal pressure, and access to safe drinking water.",
+    color: "#22d3ee",
+    eyebrow: "text-cyan-300",
+    wash: "from-cyan-400/15",
+    border: "border-cyan-400/25",
+    badge: "bg-cyan-400/10 text-cyan-200 ring-cyan-400/25",
+  },
 } as const;
 
 const numberFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -112,6 +121,11 @@ function metricCategory(metric: DomainMetric) {
     if (metric.key.includes("reserve_life")) return "Supply outlook";
     if (metric.key.includes("production")) return "Production";
     return "Reserves";
+  }
+  if (metric.domain === "freshwater") {
+    if (metric.key.includes("access")) return "Water access";
+    if (metric.key.includes("stress") || metric.key.includes("pct_resources")) return "Water pressure";
+    return "Water availability";
   }
   return metric.key.includes("atmospheric_co2") ? "Climate gases" : "Air quality";
 }

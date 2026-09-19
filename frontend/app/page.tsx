@@ -11,7 +11,7 @@ export default function HomePage() {
           Earth&apos;s vital signs, in one view.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
-          A transparent snapshot of global energy, natural resources, and atmospheric health—built from the latest available observations.
+          A transparent snapshot of global energy, freshwater, natural resources, and atmospheric health—built from the latest available observations.
         </p>
       </div>
 

@@ -3,21 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  type Domain,
+  type IndexDomain,
   type IndexValues,
   type PlanetaryIndex,
   fetchPlanetaryIndex,
   updateIndexWeights,
 } from "../lib/api";
 
-const domains: Domain[] = ["energy", "minerals", "emissions"];
+const domains: IndexDomain[] = ["energy", "minerals", "emissions"];
 const domainMeta = {
   energy: { label: "Energy", color: "#fbbf24", text: "text-amber-300" },
   minerals: { label: "Minerals", color: "#d6d3d1", text: "text-stone-300" },
   emissions: { label: "Emissions", color: "#38bdf8", text: "text-sky-300" },
 };
 
-function rebalanceWeights(current: IndexValues, changed: Domain, nextValue: number): IndexValues {
+function rebalanceWeights(current: IndexValues, changed: IndexDomain, nextValue: number): IndexValues {
   const clamped = Math.max(0, Math.min(1, nextValue));
   const otherDomains = domains.filter((domain) => domain !== changed);
   const available = 1 - clamped;
@@ -89,7 +89,7 @@ export function PlanetaryHealthIndex() {
     ) / total;
   }, [index, weights]);
 
-  function changeWeight(domain: Domain, value: number) {
+  function changeWeight(domain: IndexDomain, value: number) {
     if (!weights) return;
     hasUserChange.current = true;
     setWeights(rebalanceWeights(weights, domain, value));
@@ -130,7 +130,7 @@ export function PlanetaryHealthIndex() {
             <div className="h-full rounded-full transition-all duration-300" style={{ width: `${displayedScore}%`, backgroundColor: color }} />
           </div>
           <p className="mt-5 text-sm leading-6 text-slate-400">
-            A weighted snapshot of the latest energy, minerals, and emissions indicators. Adjust the balance to explore different priorities.
+            A weighted snapshot of the latest energy, minerals, and emissions indicators. Freshwater is shown separately while its normalization policy is reviewed.
           </p>
         </div>
 

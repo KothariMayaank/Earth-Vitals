@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { DomainDashboard } from "../../../components/domain-dashboard";
 import type { Domain } from "../../../lib/api";
 
-const domains: Domain[] = ["energy", "minerals", "emissions"];
+const domains: Domain[] = ["energy", "minerals", "emissions", "freshwater"];
 
 export function generateStaticParams() {
   return domains.map((domain) => ({ domain }));

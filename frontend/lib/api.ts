@@ -1,4 +1,5 @@
-export type Domain = "energy" | "minerals" | "emissions";
+export type Domain = "energy" | "minerals" | "emissions" | "freshwater";
+export type IndexDomain = Exclude<Domain, "freshwater">;
 
 export type DomainMetric = {
   id: number;
@@ -19,7 +20,7 @@ export type HistoryPoint = {
   value: number;
 };
 
-export type IndexValues = Record<Domain, number>;
+export type IndexValues = Record<IndexDomain, number>;
 
 export type PlanetaryIndex = {
   composite_score: number;

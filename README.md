@@ -1,16 +1,16 @@
 # Earth Vitals
 
-Earth Vitals is an open-source environmental dashboard that turns public air-quality, electricity, and mineral-reserve data into explorable time series. It includes a transparent, adjustable Planetary Health Index and deliberately simple forward scenarios whose assumptions are visible to the user.
+Earth Vitals is an open-source environmental dashboard that turns public air-quality, electricity, freshwater, and mineral-reserve data into explorable time series. It includes a transparent, adjustable Planetary Health Index and deliberately simple forward scenarios whose assumptions are visible to the user.
 
 The project is a portfolio-quality MVP, not an authoritative scientific assessment. Every score and projection should be read together with the methodology notes below.
 
 ## What it includes
 
-- Four independently runnable ingestion pipelines for OpenAQ, Ember, NOAA, OPEC, and USGS data.
-- More than 25 indicators spanning electricity mix, generation, atmospheric CO2, air quality, mineral reserves, production, and static supply ratios.
+- Five independently runnable ingestion pipelines for OpenAQ, Ember, World Bank WDI, NOAA, OPEC, and USGS data.
+- More than 30 indicators spanning electricity, freshwater availability and access, atmospheric CO2, air quality, mineral reserves, production, and static supply ratios.
 - A PostgreSQL/Supabase data store accessed through SQLAlchemy.
 - A typed FastAPI read/projection API.
-- A Next.js 14 dashboard with domain pages, Recharts histories and scenarios, a data-driven country electricity map, country profiles, and adjustable index weights.
+- A Next.js 14 dashboard with four domain pages, Recharts histories and scenarios, data-driven electricity and freshwater maps, country profiles, and adjustable index weights.
 - Scheduled GitHub Actions with manually runnable fallbacks.
 
 ## Architecture
@@ -23,10 +23,12 @@ flowchart LR
     G[GitHub Actions] --> O[OpenAQ v3]
     G --> E[Ember CSV]
     G --> N[NOAA atmospheric CO2]
+    G --> W[World Bank water indicators]
     G --> M[Reviewed OPEC and USGS CSV]
     O --> G
     E --> G
     N --> G
+    W --> G
     M --> G
     G --> D
 ```
@@ -38,7 +40,7 @@ The monorepo keeps deployment boundaries explicit: Vercel builds `frontend/`, Re
 ```text
 frontend/                 Next.js App Router UI
 backend/app/              FastAPI, SQLAlchemy models, index and projection logic
-backend/pipeline/         OpenAQ, energy, atmosphere, and minerals ingestion commands
+backend/pipeline/         OpenAQ, energy, freshwater, atmosphere, and minerals ingestion commands
 backend/scripts/          Database initialization and sample seeding
 backend/data/             Small reviewed input files (large Ember CSV is ignored)
 .github/workflows/        Scheduled ingestion jobs
@@ -64,11 +66,11 @@ Prerequisites: Python 3.12, Node.js 20+, npm, and a PostgreSQL database. A Supab
    python backend/scripts/seed_sample.py
    ```
 
-   Existing installations created before country support should run the
-   idempotent geography migration once:
+   Existing installations should run the applicable idempotent migrations once:
 
    ```shell
    python backend/scripts/migrate_geographies.py
+   python backend/scripts/migrate_freshwater_domain.py
    ```
 
 4. Run the real ingestion commands from the repository root:
@@ -78,6 +80,7 @@ Prerequisites: Python 3.12, Node.js 20+, npm, and a PostgreSQL database. A Supab
    python -m backend.pipeline.energy_ingest
    python -m backend.pipeline.minerals_ingest
    python -m backend.pipeline.atmosphere_ingest
+   python -m backend.pipeline.freshwater_ingest
    ```
 
    Ember's large source CSV is not committed. Download its current yearly release and point `ENERGY_DATA_CSV_PATH` to it first. See [`backend/pipeline/README.md`](backend/pipeline/README.md) for source and refresh details.
@@ -113,7 +116,7 @@ The other API-key placeholders in `.env.example` reserve names for future integr
 
 ## Scheduled ingestion
 
-OpenAQ runs daily at 05:17 UTC because its readings change continuously. NOAA runs monthly, matching the source CO2 series. Ember energy and reviewed OPEC/USGS reserves run monthly, on different days and minutes: their authoritative releases are annual, so weekly execution would add traffic without materially improving freshness. All four workflows support manual dispatch.
+OpenAQ runs daily at 05:17 UTC because its readings change continuously. NOAA runs monthly, matching the source CO2 series. Ember energy, World Bank freshwater, and reviewed OPEC/USGS reserves run monthly on different days and minutes: their authoritative releases are annual, so weekly execution would add traffic without materially improving freshness. All five workflows support manual dispatch.
 
 Configure these GitHub repository Actions secrets:
 
@@ -165,13 +168,18 @@ Current assumptions:
 
 These endpoints are transparent policy choices, not discovered scientific constants. The electricity-generation proxy should be replaced by carbon intensity or per-capita demand when those series are available. The editable weights are stored in the shared database, so in this MVP one user's change is visible to all users rather than being a private preference.
 
-The map is data-driven for Ember electricity metrics. It uses the latest annual
-observation for each country or economy in Ember's dataset; gray means no
+The map is data-driven for Ember electricity and World Bank freshwater metrics.
+It uses the latest available annual observation for each country; gray means no
 observation, not a zero value. Clicking a covered country opens its electricity
-profile and full history. Minerals, atmospheric CO2, and the OpenAQ aggregate
+or freshwater profile and full history. Minerals, atmospheric CO2, and the OpenAQ aggregate
 remain global series, so Earth Vitals does not imply country-level precision for
 those domains. Country/economy boundaries and labels follow the lightweight map
 dataset and should not be interpreted as a geopolitical position.
+
+Freshwater is intentionally observational and is not yet included in the
+Planetary Health Index. Water availability, withdrawal pressure, and human
+access measure different things, and an index normalization policy will be added
+only after those tradeoffs are documented and reviewed.
 
 ### Projection scenarios
 
@@ -183,7 +191,7 @@ Projection code and assumptions live in `backend/app/projection_config.py`. Thes
 
 ### Data freshness and interpretation
 
-Provider cadence differs: OpenAQ is daily, NOAA CO2 is monthly, and Ember/OPEC/USGS releases are generally annual. Missing sensors and uneven geographic coverage can bias the PM2.5 mean. NOAA recent observations may be preliminary; Earth Vitals only derives annual CO2 growth from complete calendar years. Reserve classifications and revisions vary by publisher and year. Static reserve-life values assume constant production and no reserve additions, so they are context rather than exhaustion forecasts. Always follow the linked source metadata before quoting a value outside this demonstration.
+Provider cadence differs: OpenAQ is daily, NOAA CO2 is monthly, and Ember, World Bank water, OPEC, and USGS releases are generally annual. Water indicators can lag the current year and do not measure local seasonality, groundwater depletion, household reliability, or water quality unless the metric explicitly says so. Missing sensors and uneven geographic coverage can bias the PM2.5 mean. NOAA recent observations may be preliminary; Earth Vitals only derives annual CO2 growth from complete calendar years. Reserve classifications and revisions vary by publisher and year. Static reserve-life values assume constant production and no reserve additions, so they are context rather than exhaustion forecasts. Always follow the linked source metadata before quoting a value outside this demonstration.
 
 ## Verification
 
