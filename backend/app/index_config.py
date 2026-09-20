@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-Domain = Literal["energy", "minerals", "emissions"]
+Domain = Literal["energy", "minerals", "emissions", "freshwater"]
 
 
 @dataclass(frozen=True)
@@ -91,6 +91,42 @@ NORMALIZATION_RULES: dict[str, NormalizationRule] = {
             "Lower atmospheric CO2 is scored better. The 350–450 ppm range is an "
             "explicit communication scale rather than a claim of a sharp physical safety "
             "boundary; the index is exploratory and should be read alongside the raw trend."
+        ),
+    ),
+    "freshwater_resources_per_capita_m3": NormalizationRule(
+        domain="freshwater",
+        concerning=500.0,
+        healthy=1_700.0,
+        rationale=(
+            "Higher renewable freshwater availability per person is scored better. "
+            "FAO describes less than 500 m³/person/year as absolute water stress and "
+            "1,700 m³/person/year or less as moderate scarcity. These thresholds are "
+            "national-scale screening values: they do not capture seasonality, basin-level "
+            "distribution, groundwater depletion, infrastructure, or water quality."
+        ),
+    ),
+    "freshwater_withdrawals_pct_resources": NormalizationRule(
+        domain="freshwater",
+        concerning=100.0,
+        healthy=25.0,
+        rationale=(
+            "Lower withdrawal pressure is scored better. The 25% healthy endpoint and "
+            "100% concerning endpoint mirror the UN-Water/FAO water-stress severity "
+            "bands (no stress below 25%; critical above 100%). This WDI series uses "
+            "internal renewable resources and is not identical to SDG 6.4.2 because it "
+            "does not deduct environmental flow requirements."
+        ),
+    ),
+    "safe_drinking_water_access_pct": NormalizationRule(
+        domain="freshwater",
+        concerning=50.0,
+        healthy=100.0,
+        rationale=(
+            "Higher safely managed drinking-water coverage is scored better. One hundred "
+            "percent reflects SDG 6.1's universal-access objective. Fifty percent is an "
+            "explicit index floor, not an official UN threshold: at that point at least "
+            "half the population lacks a service that is on premises, available when "
+            "needed, and free from priority contamination."
         ),
     ),
 }

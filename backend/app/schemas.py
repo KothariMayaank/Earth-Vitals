@@ -64,10 +64,11 @@ class IndexWeights(BaseModel):
     energy: float = Field(ge=0, le=1)
     minerals: float = Field(ge=0, le=1)
     emissions: float = Field(ge=0, le=1)
+    freshwater: float = Field(ge=0, le=1)
 
     @model_validator(mode="after")
     def weights_sum_to_one(self) -> "IndexWeights":
-        total = self.energy + self.minerals + self.emissions
+        total = self.energy + self.minerals + self.emissions + self.freshwater
         if abs(total - 1.0) > 0.01:
             raise ValueError("Index weights must sum to approximately 1.0.")
         return self
@@ -77,6 +78,7 @@ class IndexDomainScores(BaseModel):
     energy: float
     minerals: float
     emissions: float
+    freshwater: float
 
 
 class IndexResponse(BaseModel):

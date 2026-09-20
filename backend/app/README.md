@@ -147,25 +147,25 @@ for each domain, and the weights used in the composite.
 
 ```json
 {
-  "composite_score": 29.6,
-  "domain_scores": {"energy": 37.89, "minerals": 39.73, "emissions": 11.19},
-  "weights": {"energy": 0.333, "minerals": 0.333, "emissions": 0.333}
+  "composite_score": 45.24,
+  "domain_scores": {"energy": 37.89, "minerals": 39.73, "emissions": 20.9, "freshwater": 82.45},
+  "weights": {"energy": 0.25, "minerals": 0.25, "emissions": 0.25, "freshwater": 0.25}
 }
 ```
 
-`PUT /index/weights` accepts all three weights and returns the recomputed index.
-Each value must be between 0 and 1, and the three values must sum to within 0.01
+`PUT /index/weights` accepts all four weights and returns the recomputed index.
+Each value must be between 0 and 1, and the four values must sum to within 0.01
 of 1.0.
 
 ```json
-{"energy":0.5,"minerals":0.3,"emissions":0.2}
+{"energy":0.4,"minerals":0.2,"emissions":0.2,"freshwater":0.2}
 ```
 
 The subjective normalization endpoints and their detailed rationales live in
 `backend/app/index_config.py`. A raw value is linearly interpolated between its
 configured concerning endpoint (score 0) and healthy endpoint (score 100), then
 clamped to that range. Domain scores are unweighted averages of their available
-configured metrics; the composite is the weighted average of the three domains.
+configured metrics; the composite is the weighted average of the four domains.
 
 ## Metric projections
 

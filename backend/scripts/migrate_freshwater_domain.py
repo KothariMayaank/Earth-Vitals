@@ -29,8 +29,29 @@ def main() -> None:
                     "CHECK (domain IN ('energy', 'minerals', 'emissions', 'freshwater'))"
                 )
             )
+            connection.execute(
+                text("ALTER TABLE index_weights DROP CONSTRAINT IF EXISTS ck_index_weights_domain")
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE index_weights ADD CONSTRAINT ck_index_weights_domain "
+                    "CHECK (domain IN ('energy', 'minerals', 'emissions', 'freshwater'))"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO index_weights (domain, weight) VALUES ('freshwater', 0.25) "
+                    "ON CONFLICT (domain) DO UPDATE SET weight = EXCLUDED.weight"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE index_weights SET weight = 0.25, updated_at = NOW() "
+                    "WHERE domain IN ('energy', 'minerals', 'emissions', 'freshwater')"
+                )
+            )
     Base.metadata.create_all(engine)
-    print("Freshwater domain migration complete.")
+    print("Freshwater domain and four-way index migration complete.")
 
 
 if __name__ == "__main__":

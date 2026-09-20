@@ -48,6 +48,7 @@ const domains: Array<{
   },
   {
     key: "freshwater",
+    scoreKey: "freshwater",
     name: "Freshwater",
     href: "/domains/freshwater",
     description: "Water availability, withdrawal pressure, stress, and safe drinking-water access.",

@@ -153,7 +153,7 @@ Import the same repository, choose `frontend` as the Root Directory, and set `NE
 
 ### Planetary Health Index
 
-The normalization policy is reviewable in `backend/app/index_config.py`. Each raw metric is linearly mapped between a concerning endpoint (score 0) and a healthy endpoint (score 100), then clamped. Metrics within a domain are averaged equally. The overall score is the weighted average of the three domain scores; the UI begins at roughly equal weights and lets users change them.
+The normalization policy is reviewable in `backend/app/index_config.py`. Each raw metric is linearly mapped between a concerning endpoint (score 0) and a healthy endpoint (score 100), then clamped. Metrics within a domain are averaged equally. The overall score is the weighted average of the four domain scores; the UI begins at equal weights and lets users change them.
 
 Current assumptions:
 
@@ -165,6 +165,9 @@ Current assumptions:
 | Lithium reserves | 20 million tonnes | 50 million tonnes | Higher reduces transition-supply scarcity, but ignores mining impacts, grade, concentration, and recycling. |
 | PM2.5 concentration | 35 µg/m³ | 5 µg/m³ | Lower is better; 5 reflects the [WHO annual guideline](https://www.who.int/teams/environment-climate-change-and-health/air-quality-and-health/health-impacts/types-of-pollutants). The OpenAQ aggregation is sensor-weighted, not population- or area-weighted. |
 | Global atmospheric CO2 | 450 ppm | 350 ppm | Lower is better. This communication range is an explicit index choice, not a sharp physical safety boundary. |
+| Renewable freshwater per person | 500 m³/person | 1,700 m³/person | Higher is better. The endpoints follow FAO's absolute-stress and moderate-scarcity screening levels but hide basin and seasonal differences. |
+| Freshwater withdrawals vs. internal resources | 100% | 25% | Lower is better. These endpoints mirror UN-Water/FAO stress bands, although this WDI series does not deduct environmental flows. |
+| Safely managed drinking-water access | 50% | 100% | Higher is better. Universal access follows SDG 6.1; 50% is an explicit index floor rather than an official UN threshold. |
 
 These endpoints are transparent policy choices, not discovered scientific constants. The electricity-generation proxy should be replaced by carbon intensity or per-capita demand when those series are available. The editable weights are stored in the shared database, so in this MVP one user's change is visible to all users rather than being a private preference.
 
@@ -176,10 +179,12 @@ remain global series, so Earth Vitals does not imply country-level precision for
 those domains. Country/economy boundaries and labels follow the lightweight map
 dataset and should not be interpreted as a geopolitical position.
 
-Freshwater is intentionally observational and is not yet included in the
-Planetary Health Index. Water availability, withdrawal pressure, and human
-access measure different things, and an index normalization policy will be added
-only after those tradeoffs are documented and reviewed.
+The freshwater domain score averages availability, withdrawal pressure, and
+safely managed access. Absolute withdrawal volume is excluded because it largely
+tracks population and economic scale. The country-only water-stress series is
+also excluded from the global score because the source feed has no official
+World observation. Global averages can still hide severe national, basin-level,
+and seasonal scarcity, so the score must be read alongside the map.
 
 ### Projection scenarios
 

@@ -10,11 +10,12 @@ import {
   updateIndexWeights,
 } from "../lib/api";
 
-const domains: IndexDomain[] = ["energy", "minerals", "emissions"];
+const domains: IndexDomain[] = ["energy", "minerals", "emissions", "freshwater"];
 const domainMeta = {
   energy: { label: "Energy", color: "#fbbf24", text: "text-amber-300" },
   minerals: { label: "Minerals", color: "#d6d3d1", text: "text-stone-300" },
   emissions: { label: "Emissions", color: "#38bdf8", text: "text-sky-300" },
+  freshwater: { label: "Freshwater", color: "#22d3ee", text: "text-cyan-300" },
 };
 
 function rebalanceWeights(current: IndexValues, changed: IndexDomain, nextValue: number): IndexValues {
@@ -130,7 +131,7 @@ export function PlanetaryHealthIndex() {
             <div className="h-full rounded-full transition-all duration-300" style={{ width: `${displayedScore}%`, backgroundColor: color }} />
           </div>
           <p className="mt-5 text-sm leading-6 text-slate-400">
-            A weighted snapshot of the latest energy, minerals, and emissions indicators. Freshwater is shown separately while its normalization policy is reviewed.
+            A weighted snapshot of the latest energy, minerals, emissions, and freshwater indicators. Adjust the balance to explore different priorities.
           </p>
         </div>
 

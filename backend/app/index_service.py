@@ -9,8 +9,8 @@ from backend.app.models import DataPoint, Geography, IndexWeight, Metric
 from backend.app.schemas import IndexDomainScores, IndexResponse, IndexWeights
 
 
-DOMAINS: tuple[Domain, ...] = ("energy", "minerals", "emissions")
-DEFAULT_WEIGHT = 0.333
+DOMAINS: tuple[Domain, ...] = ("energy", "minerals", "emissions", "freshwater")
+DEFAULT_WEIGHT = 0.25
 
 
 class IndexUnavailableError(RuntimeError):

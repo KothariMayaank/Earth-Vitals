@@ -99,7 +99,7 @@ class IndexWeight(Base):
     __tablename__ = "index_weights"
     __table_args__ = (
         CheckConstraint(
-            "domain IN ('energy', 'minerals', 'emissions')",
+            "domain IN ('energy', 'minerals', 'emissions', 'freshwater')",
             name="ck_index_weights_domain",
         ),
         CheckConstraint(

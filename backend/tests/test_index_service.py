@@ -23,6 +23,9 @@ CURRENT_VALUES = {
     "global_lithium_reserves_tonnes": 35_000_000.0,
     "reporting_station_pm25_mean_ug_m3": 20.0,
     "global_atmospheric_co2_ppm": 400.0,
+    "freshwater_resources_per_capita_m3": 1_100.0,
+    "freshwater_withdrawals_pct_resources": 62.5,
+    "safe_drinking_water_access_pct": 75.0,
 }
 
 
@@ -72,24 +75,26 @@ class IndexServiceTests(unittest.TestCase):
         self.assertEqual(result.domain_scores.energy, 50.0)
         self.assertEqual(result.domain_scores.minerals, 50.0)
         self.assertEqual(result.domain_scores.emissions, 50.0)
+        self.assertEqual(result.domain_scores.freshwater, 50.0)
         self.assertEqual(result.composite_score, 50.0)
 
     def test_weight_update_recomputes_and_persists(self) -> None:
         with Session(self.engine) as session:
             result = update_index_weights(
                 session,
-                IndexWeights(energy=0.5, minerals=0.3, emissions=0.2),
+                IndexWeights(energy=0.4, minerals=0.2, emissions=0.2, freshwater=0.2),
             )
             persisted = compute_current_index(session)
 
-        self.assertEqual(result.weights.energy, 0.5)
+        self.assertEqual(result.weights.energy, 0.4)
         self.assertEqual(persisted.weights.emissions, 0.2)
+        self.assertEqual(persisted.weights.freshwater, 0.2)
 
     def test_weights_require_valid_range_and_sum(self) -> None:
         with self.assertRaises(ValidationError):
-            IndexWeights(energy=0.7, minerals=0.7, emissions=-0.4)
+            IndexWeights(energy=0.7, minerals=0.3, emissions=0.1, freshwater=-0.1)
         with self.assertRaises(ValidationError):
-            IndexWeights(energy=0.2, minerals=0.2, emissions=0.2)
+            IndexWeights(energy=0.2, minerals=0.2, emissions=0.2, freshwater=0.2)
 
 
 if __name__ == "__main__":

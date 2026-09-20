@@ -1,5 +1,5 @@
 export type Domain = "energy" | "minerals" | "emissions" | "freshwater";
-export type IndexDomain = Exclude<Domain, "freshwater">;
+export type IndexDomain = Domain;
 
 export type DomainMetric = {
   id: number;
