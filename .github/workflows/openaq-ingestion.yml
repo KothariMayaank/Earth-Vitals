@@ -1,8 +1,8 @@
 name: Ingest OpenAQ air quality
 
 on:
-  schedule:
-    - cron: "17 5 * * *"
+  # Temporarily manual-only while the production database connection is repaired.
+  # Restore the daily schedule after SUPABASE_DB_URL has been verified.
   workflow_dispatch:
 
 permissions:
